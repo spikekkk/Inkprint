@@ -20,6 +20,7 @@ export class GoalPage {
   private nodes: GoalNode[] = [];
   private readonly collapsed = new Set<string>();
   private treeHost: HTMLElement | null = null;
+  private summary: HTMLElement | null = null;
 
   constructor(private readonly shell: AppShell) {}
 
@@ -28,7 +29,7 @@ export class GoalPage {
     const head = container.createDiv({ cls: "zss-page-heading" });
     const copy = head.createDiv();
     copy.createEl("h1", { text: "目标与打卡" });
-    const summary = copy.createSpan();
+    this.summary = copy.createSpan();
     const newButton = head.createEl("button", {
       cls: "zss-primary-button",
       attr: { type: "button" },
@@ -51,10 +52,10 @@ export class GoalPage {
     });
 
     this.treeHost = container.createDiv({ cls: "zss-goal-tree" });
-    await this.reload(summary);
+    await this.reload();
   }
 
-  private async reload(summary?: HTMLElement): Promise<void> {
+  private async reload(): Promise<void> {
     const today = dateKey(new Date());
     const completedTaskIds =
       await this.shell.options.services.checkin.getCompletedTaskIds(today);
@@ -68,7 +69,7 @@ export class GoalPage {
     );
     const tasks = this.nodes.filter((node) => node.kind === "task" && !node.archived);
     const completed = tasks.filter((node) => node.done).length;
-    summary?.setText(`今天完成 ${completed} / ${tasks.length} 项 · 点击节点管理归属`);
+    this.summary?.setText(`今天完成 ${completed} / ${tasks.length} 项 · 点击节点管理归属`);
     this.renderTree();
   }
 
@@ -126,7 +127,7 @@ export class GoalPage {
     main.createEl("strong", { text: node.title });
     const meta = main.createSpan({ cls: "zss-goal-meta" });
     meta.createSpan({ text: KIND_LABELS[node.kind], cls: "zss-goal-kind" });
-    meta.createSpan({ text: this.pathFor(node) });
+    meta.createSpan({ text: this.parentPathFor(node) });
     main.addEventListener("click", () => this.openForm(node.parentId, node, "edit"));
 
     const progressEl = row.createDiv({ cls: "zss-goal-progress" });
@@ -273,6 +274,7 @@ export class GoalPage {
       }
       input.form.remove();
       await this.reload();
+      this.shell.invalidatePage("journal");
       new Notice("目标树已保存。");
     } catch (error) {
       new Notice(error instanceof Error ? error.message : "保存目标失败。");
@@ -287,6 +289,7 @@ export class GoalPage {
         !node.done,
       );
       await this.reload();
+      this.shell.invalidatePage("journal");
     } catch (error) {
       new Notice(error instanceof Error ? error.message : "更新打卡失败。");
     }
@@ -295,6 +298,7 @@ export class GoalPage {
   private async archive(node: GoalNode): Promise<void> {
     await this.shell.options.services.goals.archive(node.id);
     await this.reload();
+    this.shell.invalidatePage("journal");
     new Notice(`已归档：${node.title}`);
   }
 
@@ -308,5 +312,17 @@ export class GoalPage {
       cursor = parent;
     }
     return names.join(" / ");
+  }
+
+  private parentPathFor(node: GoalNode): string {
+    const names: string[] = [];
+    let parentId = node.parentId;
+    while (parentId) {
+      const parent = this.nodes.find((candidate) => candidate.id === parentId);
+      if (!parent) break;
+      names.unshift(parent.title);
+      parentId = parent.parentId;
+    }
+    return names.length ? `属于 ${names.join(" / ")}` : "顶层目标";
   }
 }
