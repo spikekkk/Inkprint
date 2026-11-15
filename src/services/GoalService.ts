@@ -104,6 +104,15 @@ export class GoalService {
     await this.persist(nodes);
   }
 
+  async setTaskDone(id: string, done: boolean): Promise<void> {
+    const nodes = await this.load();
+    const node = nodes.find((candidate) => candidate.id === id);
+    if (!node) throw new Error(`Unknown goal: ${id}`);
+    if (node.kind !== "task") throw new Error("Only task goals can be checked in.");
+    node.done = done;
+    await this.persist(nodes);
+  }
+
   private async persist(nodes: GoalNode[]): Promise<void> {
     const file = await this.ensureFile();
     await this.vault.process(file, () => serializeGoalTree(nodes));
