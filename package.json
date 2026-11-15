@@ -1,0 +1,22 @@
+{
+  "name": "zhenshangshu",
+  "version": "0.1.0",
+  "description": "Capture daily notes, check-ins, goals, and reflections directly inside your vault.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "builtin-modules": "^5.0.0",
+    "esbuild": "^0.28.0",
+    "jsdom": "^26.1.0",
+    "obsidian": "^1.14.4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "zhenshangshu",
+  "name": "枕上书",
+  "version": "0.1.0",
+  "minAppVersion": "1.13.0",
+  "description": "Capture daily notes, check-ins, goals, and reflections directly inside your vault.",
+  "author": "spikek",
+  "isDesktopOnly": false
+}
