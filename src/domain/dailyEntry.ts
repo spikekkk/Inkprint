@@ -23,6 +23,7 @@ export function serializeDailyEntry(input: DailyEntryInput): string {
     createdAt: input.createdAt,
     kind: input.kind ?? "note",
     ...(input.taskId ? { taskId: input.taskId } : {}),
+    ...(input.event ? { event: input.event } : {}),
     ...(input.longformPath ? { longformPath: input.longformPath } : {}),
     ...(input.bookId ? { bookId: input.bookId } : {}),
   };
@@ -84,6 +85,9 @@ export function parseDailyEntries(markdown: string): DailyEntry[] {
       tags,
       kind: isEntryKind(metadata.kind) ? metadata.kind : "note",
       ...(typeof metadata.taskId === "string" ? { taskId: metadata.taskId } : {}),
+      ...(metadata.event === "completed" || metadata.event === "reopened"
+        ? { event: metadata.event }
+        : {}),
       ...(typeof metadata.longformPath === "string" ? { longformPath: metadata.longformPath } : {}),
       ...(typeof metadata.bookId === "string" ? { bookId: metadata.bookId } : {}),
     });

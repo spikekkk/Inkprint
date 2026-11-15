@@ -11,12 +11,14 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
     "@types/node": "^22.15.0",
     "builtin-modules": "^5.0.0",
     "esbuild": "^0.28.0",
     "jsdom": "^26.1.0",
     "obsidian": "^1.14.4",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.12"
   }
 }

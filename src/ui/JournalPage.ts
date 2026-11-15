@@ -6,6 +6,7 @@ import type { ZhenshangshuSettings } from "../settings/defaults";
 import type { AppShell } from "./AppShell";
 import { CalendarMonth, dateKey, type CalendarDay } from "./CalendarMonth";
 import { Composer } from "./Composer";
+import { LongformModal } from "./LongformModal";
 
 export class JournalPage {
   private year: number;
@@ -14,6 +15,7 @@ export class JournalPage {
   private readonly entriesByDay = new Map<string, DailyEntry[]>();
   private calendarHost: HTMLElement | null = null;
   private timelineHost: HTMLElement | null = null;
+  private quickChecksHost: HTMLElement | null = null;
   private monthTitle: HTMLElement | null = null;
   private composer: Composer | null = null;
 
@@ -64,7 +66,9 @@ export class JournalPage {
 
     this.composer = new Composer(container, {
       onSave: (body) => this.saveEntry(body),
+      onCreateLongform: (body) => this.openLongformModal(body),
     });
+    this.quickChecksHost = container.createDiv({ cls: "zss-quick-checks" });
     const timeline = container.createEl("section", {
       cls: "zss-timeline",
       attr: { "aria-label": "当天记录" },
@@ -72,6 +76,7 @@ export class JournalPage {
     this.timelineHost = timeline;
 
     this.shell.setTodayHandler(() => this.selectToday());
+    this.shell.setDateHandler((key) => void this.selectDate(key));
     await this.loadMonth();
     this.renderCalendar();
     await this.showSelectedDay();
@@ -178,6 +183,7 @@ export class JournalPage {
       this.entriesByDay.set(this.selectedDateKey, parseDailyEntries(markdown));
     }
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
+    await this.renderQuickChecks();
   }
 
   private renderTimeline(entries: DailyEntry[]): void {
@@ -220,6 +226,7 @@ export class JournalPage {
     this.entriesByDay.set(this.selectedDateKey, parseDailyEntries(markdown));
     this.renderCalendar();
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
+    await this.renderQuickChecks();
     new Notice("已收进今天的日记。");
   }
 
@@ -233,6 +240,89 @@ export class JournalPage {
       this.renderCalendar();
       return this.showSelectedDay();
     });
+  }
+
+  private async selectDate(key: string): Promise<void> {
+    const date = new Date(`${key}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return;
+    this.year = date.getFullYear();
+    this.monthIndex = date.getMonth();
+    this.selectedDateKey = key;
+    this.updateMonthTitle();
+    await this.loadMonth();
+    this.renderCalendar();
+    await this.showSelectedDay();
+  }
+
+  private openLongformModal(body: string): void {
+    new LongformModal(this.shell.options.app, body, async (title) => {
+      const now = new Date();
+      const sourceEntryId = createEntryId(now, createRandomSuffix());
+      const createdAt = localTimestamp(now);
+      const result = await this.shell.options.services.longform.create({
+        title,
+        body,
+        sourceEntryId,
+        journalDay: this.selectedDateKey,
+      });
+      await this.shell.options.services.daily.append(this.selectedDateKey, {
+        entryId: sourceEntryId,
+        createdAt,
+        body: `创建长文：${title}\n\n${result.link}`,
+        tags: ["长文"],
+        kind: "longform-ref",
+        longformPath: result.path,
+      });
+      this.entriesByDay.delete(this.selectedDateKey);
+      this.composer?.clear();
+      await this.showSelectedDay();
+      this.shell.invalidatePage("content");
+      new Notice("长文已创建，Daily 入口和引用已保留。");
+    }).open();
+  }
+
+  private async renderQuickChecks(): Promise<void> {
+    if (!this.quickChecksHost) return;
+    this.quickChecksHost.empty();
+    if (this.selectedDateKey !== dateKey(new Date())) return;
+    const completedTaskIds =
+      await this.shell.options.services.checkin.getCompletedTaskIds(this.selectedDateKey);
+    const goals = (await this.shell.options.services.goals.load()).map((node) =>
+      node.kind === "task"
+        ? { ...node, done: completedTaskIds.has(node.id) }
+        : node,
+    );
+    const tasks = goals
+      .filter((node) => node.kind === "task" && !node.archived)
+      .slice(0, this.settings.quickCheckLimit);
+    if (!tasks.length) {
+      this.quickChecksHost.createDiv({
+        cls: "zss-quick-empty",
+        text: "还没有快捷打卡任务，可以到“打卡”里新建。",
+      });
+      return;
+    }
+
+    this.quickChecksHost.createEl("strong", { text: "今日打卡" });
+    const row = this.quickChecksHost.createDiv({ cls: "zss-quick-row" });
+    for (const task of tasks) {
+      const button = row.createEl("button", {
+        cls: "zss-check",
+        attr: { type: "button", "aria-pressed": String(task.done) },
+      });
+      button.toggleClass("is-done", task.done);
+      button.createSpan({ cls: "zss-check-mark", text: task.done ? "✓" : "" });
+      button.createSpan({ text: task.title });
+      button.addEventListener("click", async () => {
+        await this.shell.options.services.checkin.setTaskDone(
+          this.selectedDateKey,
+          task,
+          !task.done,
+        );
+        await this.renderQuickChecks();
+        this.shell.invalidatePage("checkin");
+      });
+    }
   }
 
   private updateMonthTitle(): void {

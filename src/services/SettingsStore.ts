@@ -16,6 +16,10 @@ export class SettingsStore {
     return { ...this.current };
   }
 
+  getCached(): ZhenshangshuSettings | null {
+    return this.current ? { ...this.current } : null;
+  }
+
   async save(next: ZhenshangshuSettings): Promise<void> {
     const normalized = normalizeSettings(next);
     await this.plugin.saveData(normalized);

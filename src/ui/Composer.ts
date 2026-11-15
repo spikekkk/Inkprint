@@ -2,6 +2,7 @@ import { Notice, setIcon } from "obsidian";
 
 export interface ComposerOptions {
   onSave(body: string): Promise<void>;
+  onCreateLongform(body: string): void;
 }
 
 export class Composer {
@@ -48,6 +49,21 @@ export class Composer {
     setIcon(tagButton, "hash");
     tagButton.createSpan({ text: "标签" });
     tagButton.addEventListener("click", () => this.appendTag("待整理"));
+    const longformButton = tools.createEl("button", {
+      cls: "zss-tool-button",
+      attr: { type: "button", "aria-label": "创建长文" },
+    });
+    setIcon(longformButton, "file-text");
+    longformButton.createSpan({ text: "长文" });
+    longformButton.addEventListener("click", () => {
+      const body = this.textarea.value.trim();
+      if (!body) {
+        new Notice("先写下正文，再创建长文。");
+        this.textarea.focus();
+        return;
+      }
+      this.options.onCreateLongform(body);
+    });
 
     this.saveButton = footer.createEl("button", {
       cls: "zss-save-button",

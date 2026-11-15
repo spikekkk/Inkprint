@@ -1,4 +1,5 @@
 export type EntryKind = "note" | "task" | "longform-ref" | "book";
+export type TaskEvent = "completed" | "reopened";
 
 export interface DailyEntryInput {
   entryId: string;
@@ -7,6 +8,7 @@ export interface DailyEntryInput {
   tags: string[];
   kind?: EntryKind;
   taskId?: string;
+  event?: TaskEvent;
   longformPath?: string;
   bookId?: string;
 }

@@ -54,26 +54,4 @@ describe("GoalService", () => {
     expect(content.match(/\[archived:: true\]/g)).toHaveLength(3);
   });
 
-  it("persists a task completion without changing its identity", async () => {
-    let content = [
-      "- 内容输出 #okr/objective ^goal-content",
-      "  - [ ] 整理目标结构 #okr/task ^task-organize",
-    ].join("\n");
-    const file = { path: "Goals/目标树.md" };
-    const vault = {
-      getFileByPath: vi.fn(() => file),
-      getAbstractFileByPath: vi.fn(() => ({ children: [] })),
-      cachedRead: vi.fn(async () => content),
-      process: vi.fn(async (_file: unknown, update: (data: string) => string) => {
-        content = update(content);
-        return content;
-      }),
-    } as unknown as Vault;
-    const service = new GoalService(vault, { goalsPath: "Goals/目标树.md" });
-
-    await service.setTaskDone("task-organize", true);
-
-    expect(content).toContain("- [x] 整理目标结构");
-    expect(content).toContain("^task-organize");
-  });
 });

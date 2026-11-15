@@ -1,12 +1,14 @@
 import { setIcon, type App, type Vault } from "obsidian";
 import type { ZhenshangshuSettings } from "../settings/defaults";
 import type { DailyNoteService } from "../services/DailyNoteService";
+import type { CheckinService } from "../services/CheckinService";
 import type { GoalService } from "../services/GoalService";
 import type { LongformService } from "../services/LongformService";
 import { createPageState, type AppPage } from "./PageState";
 
 export interface AppShellServices {
   daily: DailyNoteService;
+  checkin: CheckinService;
   goals: GoalService;
   longform: LongformService;
 }
@@ -38,6 +40,7 @@ export class AppShell {
   private drawerBackdrop: HTMLElement | null = null;
   private unsubscribe: (() => void) | null = null;
   private todayHandler: (() => void) | null = null;
+  private dateHandler: ((dateKey: string) => void) | null = null;
 
   constructor(readonly options: AppShellOptions) {}
 
@@ -51,6 +54,7 @@ export class AppShell {
     container.addClass("zhenshangshu-view");
 
     const root = container.createDiv({ cls: "zss-app" });
+    root.toggleClass("is-reduce-transparency", this.options.settings.reduceTransparency);
     this.root = root;
     const header = root.createEl("header", { cls: "zss-mobile-header" });
     const menuButton = header.createEl("button", {
@@ -142,6 +146,11 @@ export class AppShell {
     }, 0);
   }
 
+  openDate(dateKey: string): void {
+    this.setPage("journal");
+    this.dateHandler?.(dateKey);
+  }
+
   dispose(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
@@ -153,10 +162,20 @@ export class AppShell {
     this.drawer = null;
     this.drawerBackdrop = null;
     this.todayHandler = null;
+    this.dateHandler = null;
   }
 
   setTodayHandler(handler: () => void): void {
     this.todayHandler = handler;
+  }
+
+  setDateHandler(handler: (dateKey: string) => void): void {
+    this.dateHandler = handler;
+  }
+
+  invalidatePage(page: AppPage): void {
+    this.rendered.delete(page);
+    if (this.state.getPage() === page) void this.showPage(page);
   }
 
   private async showPage(page: AppPage): Promise<void> {
