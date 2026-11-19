@@ -1,4 +1,4 @@
-# 枕上书 MVP Implementation Plan
+# Inkprint MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,11 +12,11 @@
 - `docs/superpowers/specs/2026-11-12-goal-linked-book-notes-design.md`
 - `docs/superpowers/specs/2026-11-14-flexible-okr-tree-and-checkin-heatmap-design.md`
 - `docs/superpowers/specs/2026-11-14-settings-information-architecture-design.md`
-- `docs/superpowers/specs/2026-11-14-zhenshangshu-obsidian-compliance-design.md`
+- `docs/superpowers/specs/2026-11-14-inkprint-obsidian-compliance-design.md`
 
 ## Global Constraints
 
-- Plugin ID is `zhenshangshu`; display name is `枕上书`; author is `spikek`.
+- Plugin ID is `inkprint`; display name is `Inkprint`; author is `spikek`.
 - Minimum Obsidian version is `1.13.0`; `isDesktopOnly` is `false`.
 - Markdown is the durable data source; derived indexes must be rebuildable.
 - Use `Vault.process()`, `processFrontMatter()`, `normalizePath()`, `registerEvent()`, and Obsidian DOM helpers.
@@ -39,22 +39,22 @@
 - Create: `vitest.config.ts`
 - Create: `.gitignore`
 - Create: `src/main.ts`
-- Create: `src/view/ZhenshangshuView.ts`
+- Create: `src/view/InkprintView.ts`
 - Test: `tests/smoke.test.ts`
 
 **Interfaces:**
 - Produces: npm scripts `dev`, `build`, `test`, and `typecheck`.
-- Produces: plugin class `ZhenshangshuPlugin` and placeholder view type constant `VIEW_TYPE_ZHENSHANGSHU`.
+- Produces: plugin class `InkprintPlugin` and placeholder view type constant `VIEW_TYPE_INKPRINT`.
 
 - [ ] **Step 1: Write the failing smoke test**
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { VIEW_TYPE_ZHENSHANGSHU } from "../src/view/ZhenshangshuView";
+import { VIEW_TYPE_INKPRINT } from "../src/view/InkprintView";
 
 describe("plugin scaffold", () => {
   it("uses a stable custom view type", () => {
-    expect(VIEW_TYPE_ZHENSHANGSHU).toBe("zhenshangshu-view");
+    expect(VIEW_TYPE_INKPRINT).toBe("inkprint-view");
   });
 });
 ```
@@ -67,7 +67,7 @@ Expected: FAIL because the source module does not exist.
 
 - [ ] **Step 3: Add the official Sample Plugin build structure**
 
-Use esbuild with `obsidian` marked external, `format: "cjs"`, `target: "es2018"`, and output `main.js`. The Manifest must use the exact identity values in Global Constraints. The view file exports `VIEW_TYPE_ZHENSHANGSHU = "zhenshangshu-view"` and a minimal `ItemView`.
+Use esbuild with `obsidian` marked external, `format: "cjs"`, `target: "es2018"`, and output `main.js`. The Manifest must use the exact identity values in Global Constraints. The view file exports `VIEW_TYPE_INKPRINT = "inkprint-view"` and a minimal `ItemView`.
 
 - [ ] **Step 4: Run the smoke test**
 
@@ -78,8 +78,8 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add package.json package-lock.json manifest.json versions.json tsconfig.json esbuild.config.mjs vitest.config.ts .gitignore src/main.ts src/view/ZhenshangshuView.ts tests/smoke.test.ts
-git commit -m "chore: scaffold zhenshangshu plugin"
+git add package.json package-lock.json manifest.json versions.json tsconfig.json esbuild.config.mjs vitest.config.ts .gitignore src/main.ts src/view/InkprintView.ts tests/smoke.test.ts
+git commit -m "chore: scaffold inkprint plugin"
 ```
 
 ### Task 2: Implement Daily entry and reference parsing
@@ -162,8 +162,8 @@ git commit -m "feat: add daily entry and reference parsing"
 - Test: `tests/longformService.test.ts`
 
 **Interfaces:**
-- Produces: `SettingsStore.load(): Promise<ZhenshangshuSettings>`.
-- Produces: `SettingsStore.save(next: ZhenshangshuSettings): Promise<void>`.
+- Produces: `SettingsStore.load(): Promise<InkprintSettings>`.
+- Produces: `SettingsStore.save(next: InkprintSettings): Promise<void>`.
 - Produces: `DailyNoteService.append(dateKey: string, input: DailyEntryInput): Promise<DailyEntry>`.
 - Produces: `LongformService.create(input: LongformInput): Promise<LongformResult>`.
 
@@ -278,7 +278,7 @@ git commit -m "feat: add flexible goal tree"
 
 **Files:**
 - Modify: `src/main.ts`
-- Modify: `src/view/ZhenshangshuView.ts`
+- Modify: `src/view/InkprintView.ts`
 - Create: `src/ui/AppShell.ts`
 - Create: `src/ui/PageState.ts`
 - Test: `tests/pageState.test.ts`
@@ -318,7 +318,7 @@ Expected: PASS with no TypeScript errors.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/main.ts src/view/ZhenshangshuView.ts src/ui/AppShell.ts src/ui/PageState.ts tests/pageState.test.ts
+git add src/main.ts src/view/InkprintView.ts src/ui/AppShell.ts src/ui/PageState.ts tests/pageState.test.ts
 git commit -m "feat: add responsive plugin shell"
 ```
 
@@ -419,7 +419,7 @@ git commit -m "feat: add goals and longform relations"
 ### Task 8: Add settings, styles, and release verification
 
 **Files:**
-- Create: `src/settings/ZhenshangshuSettingTab.ts`
+- Create: `src/settings/InkprintSettingTab.ts`
 - Create: `src/settings/defaults.ts`
 - Create: `styles.css`
 - Create: `README.md`

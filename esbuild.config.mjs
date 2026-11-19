@@ -5,7 +5,7 @@ import builtins from "builtin-modules";
 const production = process.argv[2] === "production";
 
 const context = await esbuild.context({
-  banner: { js: "/* 枕上书 | GPL-3.0 */" },
+  banner: { js: "/* Inkprint | GPL-3.0 */" },
   entryPoints: ["src/main.ts"],
   bundle: true,
   external: [

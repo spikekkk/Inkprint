@@ -1,9 +1,9 @@
 {
-  "id": "zhenshangshu",
-  "name": "枕上书",
+  "id": "inkprint",
+  "name": "Inkprint",
   "version": "0.1.0",
   "minAppVersion": "1.13.0",
-  "description": "Capture daily notes, check-ins, goals, and reflections directly inside your vault.",
+  "description": "AI writes its own. I write mine. A local-first journal for human-authored notes.",
   "author": "spikek",
   "isDesktopOnly": false
 }

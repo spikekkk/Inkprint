@@ -1,12 +1,15 @@
-# 枕上书
+# Inkprint
 
-枕上书是一个移动端优先的 Obsidian 日记插件。它把日历、随手记录、OKR 打卡、长文和引用关系放在同一个主视图里，同时保持 Markdown 为标准数据源。
+> AI writes its own. I write mine.
+>
+> AI 写的是 AI 的，我写的才是我的。
+
+Inkprint 是一个移动端优先的 Obsidian 日记插件。它把日历、随手记录、Markdown checkbox、长文、统计和引用关系放在同一个主视图里，同时保持 Markdown 为标准数据源。
 
 ## 当前能力
 
 - 从日期下方直接写 Daily 记录。
-- 使用 `Goals/目标树.md` 管理可无限层级的 OKR 树。
-- 在 Daily 中写入完成事件和稳定块 ID。
+- 从已有 Daily Markdown 中手动导入 checkbox，并直接勾选回写。
 - 从输入框创建独立长文，Daily 保留摘要与返回链接。
 - 从 Daily 反向索引长文引用，并在关联详情中集中展示上下文。
 - 桌面侧栏与手机抽屉共享同一套页面状态。
@@ -19,11 +22,10 @@
 | 内容 | 默认路径 |
 | --- | --- |
 | Daily | `Daily/YYYY-MM-DD.md` |
-| 目标树 | `Goals/目标树.md` |
 | 长文 | `Longform/长文标题.md` |
 | 书籍索引 | `Books/` |
 
-Daily 记录包含可读正文、隐藏的 `journal-meta` 元数据和稳定块 ID。目标树使用缩进表示层级，并使用 `#okr/task` 等标签和块 ID 保持可读性。
+Daily 记录包含可读正文、隐藏的 `journal-meta` 元数据和稳定块 ID。普通 checkbox 保持标准 Markdown 写法，可以被 Obsidian 原生搜索和其他插件读取。
 
 ## 开发
 
@@ -45,10 +47,10 @@ npm run build
 将 `main.js`、`manifest.json` 和 `styles.css` 放入：
 
 ```text
-<Vault>/.obsidian/plugins/zhenshangshu/
+<Vault>/.obsidian/plugins/inkprint/
 ```
 
-重启 Obsidian 后在第三方插件中启用“枕上书”。
+重启 Obsidian 后在第三方插件中启用“Inkprint”。
 
 ## 隐私
 

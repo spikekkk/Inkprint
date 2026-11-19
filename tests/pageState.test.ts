@@ -5,9 +5,11 @@ describe("page state", () => {
   it("switches between the four in-view pages", () => {
     const state = createPageState();
     expect(state.getPage()).toBe("journal");
-    state.setPage("checkin");
-    expect(state.getPage()).toBe("checkin");
     state.setPage("content");
     expect(state.getPage()).toBe("content");
+    state.setPage("search");
+    expect(state.getPage()).toBe("search");
+    state.setPage("stats");
+    expect(state.getPage()).toBe("stats");
   });
 });

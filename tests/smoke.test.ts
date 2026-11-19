@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { VIEW_TYPE_ZHENSHANGSHU } from "../src/constants";
+import { VIEW_TYPE_INKPRINT } from "../src/constants";
 
 describe("plugin scaffold", () => {
   it("uses a stable custom view type", () => {
-    expect(VIEW_TYPE_ZHENSHANGSHU).toBe("zhenshangshu-view");
+    expect(VIEW_TYPE_INKPRINT).toBe("inkprint-view");
   });
 });

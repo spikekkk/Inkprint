@@ -1,7 +1,7 @@
 {
-  "name": "zhenshangshu",
+  "name": "inkprint",
   "version": "0.1.0",
-  "description": "Capture daily notes, check-ins, goals, and reflections directly inside your vault.",
+  "description": "AI writes its own. I write mine. A local-first journal for human-authored notes.",
   "private": true,
   "type": "module",
   "scripts": {

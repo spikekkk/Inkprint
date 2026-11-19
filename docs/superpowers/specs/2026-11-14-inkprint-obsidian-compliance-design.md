@@ -1,4 +1,4 @@
-# 枕上书 Obsidian 插件合规架构设计
+# Inkprint Obsidian 插件合规架构设计
 
 日期：2026-11-14  
 状态：待用户审核  
@@ -6,10 +6,10 @@
 
 ## 插件身份
 
-- 显示名称：`枕上书`
-- 候选插件 ID：`zhenshangshu`
-- 名称来源：取自苏轼《枕上》，用于夜晚安静记录的场景。
-- 当前官方社区插件清单中未发现 `zhenshangshu` 冲突。
+- 显示名称：`Inkprint`
+- 插件 ID：`inkprint`
+- 核心标语：`AI writes its own. I write mine.`
+- 中文释义：AI 写的是 AI 的，我写的才是我的。
 - 最终提交前必须再次检查 ID 唯一性。
 - 插件 ID 发布后不再修改。
 - 插件 ID 不包含 `obsidian`。
@@ -31,11 +31,11 @@
 
 初始 Manifest 固定以下字段：
 
-- `id`: `zhenshangshu`
-- `name`: `枕上书`
+- `id`: `inkprint`
+- `name`: `Inkprint`
 - `version`: `0.1.0`
 - `minAppVersion`: `1.13.0`
-- `description`: `Capture daily notes, check-ins, goals, and reflections directly inside your vault.`
+- `description`: `AI writes its own. I write mine. A local-first journal for human-authored notes.`
 - `isDesktopOnly`: `false`
 - `author`: `spikek`
 

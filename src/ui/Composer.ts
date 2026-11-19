@@ -1,75 +1,73 @@
 import { Notice, setIcon } from "obsidian";
 
 export interface ComposerOptions {
+  tags: readonly string[];
   onSave(body: string): Promise<void>;
   onCreateLongform(body: string): void;
+  onImportCheckboxes(): void;
+  onInsertImage(file: File): Promise<string>;
 }
 
 export class Composer {
   readonly el: HTMLElement;
   private readonly textarea: HTMLTextAreaElement;
-  private readonly dateLabel: HTMLElement;
-  private readonly stateLabel: HTMLElement;
   private readonly saveButton: HTMLButtonElement;
-  private readonly tags: string[] = [];
+  private readonly toolbarButtons: HTMLButtonElement[];
+  private readonly tagButtons: HTMLButtonElement[];
 
   constructor(parent: HTMLElement, private readonly options: ComposerOptions) {
     this.el = parent.createEl("section", {
       cls: "zss-composer",
       attr: { "aria-label": "记录输入" },
     });
-    const dateRow = this.el.createDiv({ cls: "zss-composer-date" });
-    this.dateLabel = dateRow.createSpan();
-    this.stateLabel = dateRow.createSpan();
-
-    this.textarea = this.el.createEl("textarea", {
+    const inputArea = this.el.createDiv({ cls: "zss-composer-input-area" });
+    this.textarea = inputArea.createEl("textarea", {
       attr: {
         "aria-label": "写下这一天的记录",
         placeholder: "此刻，想记下什么？",
       },
     });
     this.textarea.addEventListener("input", () => this.resize());
+    this.textarea.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        void this.save();
+      }
+    });
 
-    const prompts = this.el.createDiv({ cls: "zss-prompt-row" });
-    for (const tag of ["此刻的心情", "对明天说句话", "最想记录的瞬间"]) {
-      const button = prompts.createEl("button", {
-        cls: "zss-prompt",
-        text: `#${tag}`,
+    const tagRow = inputArea.createDiv({ cls: "zss-composer-tag-row" });
+    this.tagButtons = this.options.tags.map((tag) => {
+      const button = tagRow.createEl("button", {
+        cls: "zss-composer-tag",
+        text: `#${tag.replace(/^#+/, "")}`,
         attr: { type: "button" },
       });
       button.addEventListener("click", () => this.appendTag(tag));
-    }
-
-    const footer = this.el.createDiv({ cls: "zss-composer-footer" });
-    const tools = footer.createDiv({ cls: "zss-composer-tools" });
-    const tagButton = tools.createEl("button", {
-      cls: "zss-tool-button",
-      attr: { type: "button", "aria-label": "添加标签" },
-    });
-    setIcon(tagButton, "hash");
-    tagButton.createSpan({ text: "标签" });
-    tagButton.addEventListener("click", () => this.appendTag("待整理"));
-    const longformButton = tools.createEl("button", {
-      cls: "zss-tool-button",
-      attr: { type: "button", "aria-label": "创建长文" },
-    });
-    setIcon(longformButton, "file-text");
-    longformButton.createSpan({ text: "长文" });
-    longformButton.addEventListener("click", () => {
-      const body = this.textarea.value.trim();
-      if (!body) {
-        new Notice("先写下正文，再创建长文。");
-        this.textarea.focus();
-        return;
-      }
-      this.options.onCreateLongform(body);
+      return button;
     });
 
-    this.saveButton = footer.createEl("button", {
-      cls: "zss-save-button",
-      text: "收进今天",
-      attr: { type: "button" },
+    const bar = inputArea.createDiv({ cls: "zss-composer-bar" });
+    const tools = bar.createDiv({ cls: "zss-composer-tools" });
+    this.toolbarButtons = [
+      this.createTool(tools, "hash", "插入标签", () => this.insertText("#")),
+      this.createTool(tools, "image", "插入图片", () => this.chooseImage()),
+      this.createTool(tools, "list-todo", "导入原来的 Checkbox", () =>
+        this.options.onImportCheckboxes(),
+      ),
+      this.createTool(tools, "file-text", "创建长文", () => this.createLongform()),
+      this.createTool(tools, "bold", "加粗", () => this.wrapSelection("**", "**", "文字")),
+      this.createTool(tools, "highlighter", "高亮", () => this.wrapSelection("==", "==", "高亮")),
+      this.createTool(tools, "brackets", "插入链接", () => this.insertText("[[")),
+      this.createTool(tools, "list", "无序列表", () => this.insertLinePrefix("- ")),
+      this.createTool(tools, "list-ordered", "有序列表", () => this.insertLinePrefix("1. ")),
+    ];
+
+    const actions = bar.createDiv({ cls: "zss-composer-actions" });
+    this.saveButton = actions.createEl("button", {
+      cls: "zss-send-button",
+      attr: { type: "button", "aria-label": "收进今天" },
     });
+    setIcon(this.saveButton, "send");
     this.saveButton.addEventListener("click", () => void this.save());
   }
 
@@ -79,15 +77,26 @@ export class Composer {
 
   clear(): void {
     this.textarea.value = "";
-    this.tags.length = 0;
     this.resize();
   }
 
-  setDate(dateText: string, state: "当下" | "曾经" | "未来", editable: boolean): void {
-    this.dateLabel.setText(dateText);
-    this.stateLabel.setText(state);
+  insertText(text: string): void {
+    const start = this.textarea.selectionStart;
+    const end = this.textarea.selectionEnd;
+    this.textarea.setRangeText(text, start, end, "end");
+    this.textarea.focus();
+    this.resize();
+  }
+
+  setDate(_dateText: string, state: "当下" | "曾经" | "未来", editable: boolean): void {
     this.textarea.readOnly = !editable;
     this.saveButton.disabled = !editable;
+    this.toolbarButtons.forEach((button) => {
+      button.disabled = !editable;
+    });
+    this.tagButtons.forEach((button) => {
+      button.disabled = !editable;
+    });
     this.textarea.placeholder = editable
       ? "此刻，想记下什么？"
       : state === "曾经"
@@ -115,18 +124,75 @@ export class Composer {
     }
   }
 
+  private createTool(
+    parent: HTMLElement,
+    icon: string,
+    label: string,
+    action: () => void | Promise<void>,
+  ): HTMLButtonElement {
+    const button = parent.createEl("button", {
+      cls: "zss-tool-button",
+      attr: { type: "button", "aria-label": label, "data-tooltip": label },
+    });
+    setIcon(button, icon);
+    button.addEventListener("click", () => void action());
+    return button;
+  }
+
+  private createLongform(): void {
+    const body = this.textarea.value.trim();
+    if (!body) {
+      new Notice("先写下正文，再创建长文。");
+      this.textarea.focus();
+      return;
+    }
+    this.options.onCreateLongform(body);
+  }
+
+  private chooseImage(): void {
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      void this.options
+        .onInsertImage(file)
+        .then((markdown) => this.insertText(markdown))
+        .catch((error) => {
+          new Notice(error instanceof Error ? error.message : "插入图片失败。");
+        });
+    });
+    fileInput.click();
+  }
+
+  private wrapSelection(before: string, after: string, fallback: string): void {
+    const selected = this.textarea.value.slice(
+      this.textarea.selectionStart,
+      this.textarea.selectionEnd,
+    );
+    this.insertText(`${before}${selected || fallback}${after}`);
+  }
+
+  private insertLinePrefix(prefix: string): void {
+    const lineStart = this.textarea.value.lastIndexOf("\n", this.textarea.selectionStart - 1) + 1;
+    this.textarea.setRangeText(prefix, lineStart, lineStart, "end");
+    this.textarea.focus();
+    this.resize();
+  }
+
   private appendTag(tag: string): void {
-    const normalized = tag.replace(/^#+/, "");
-    if (!this.tags.includes(normalized)) this.tags.push(normalized);
+    const normalized = tag.trim().replace(/^#+/, "");
+    if (!normalized) return;
     const token = `#${normalized}`;
+    if (this.textarea.value.includes(token)) {
+      this.textarea.focus();
+      return;
+    }
     const start = this.textarea.selectionStart;
     const prefix =
       start > 0 && !/\s$/.test(this.textarea.value.slice(0, start)) ? " " : "";
-    if (!this.textarea.value.includes(token)) {
-      this.textarea.setRangeText(`${prefix}${token} `, start, this.textarea.selectionEnd, "end");
-    }
-    this.textarea.focus();
-    this.resize();
+    this.insertText(`${prefix}${token} `);
   }
 
   private resize(): void {

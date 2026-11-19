@@ -1,35 +1,39 @@
-export interface ZhenshangshuSettings {
+export interface InkprintSettings {
   dailyFolder: string;
   dailyHeading: string;
   dailyTemplate: string;
   booksFolder: string;
   longformFolder: string;
   templatesFolder: string;
-  goalsPath: string;
-  quickCheckLimit: number;
   weekStartsOn: "monday" | "sunday";
   keepFocusAfterSave: boolean;
   reduceTransparency: boolean;
+  composerTags: string[];
 }
 
-export const DEFAULT_SETTINGS: ZhenshangshuSettings = {
+export const DEFAULT_COMPOSER_TAGS = [
+  "此刻的心情",
+  "对明天说句话",
+  "最想记录的瞬间",
+];
+
+export const DEFAULT_SETTINGS: InkprintSettings = {
   dailyFolder: "Daily",
   dailyHeading: "## 记录",
   dailyTemplate: "Template/Daily.md",
   booksFolder: "Books",
   longformFolder: "Longform",
   templatesFolder: "Template",
-  goalsPath: "Goals/目标树.md",
-  quickCheckLimit: 3,
   weekStartsOn: "monday",
   keepFocusAfterSave: true,
   reduceTransparency: false,
+  composerTags: [...DEFAULT_COMPOSER_TAGS],
 };
 
-export function normalizeSettings(value: unknown): ZhenshangshuSettings {
+export function normalizeSettings(value: unknown): InkprintSettings {
   const source =
     typeof value === "object" && value !== null
-      ? (value as Partial<ZhenshangshuSettings>)
+      ? (value as Partial<InkprintSettings>)
       : {};
 
   return {
@@ -45,11 +49,6 @@ export function normalizeSettings(value: unknown): ZhenshangshuSettings {
     booksFolder: nonEmptyString(source.booksFolder, DEFAULT_SETTINGS.booksFolder),
     longformFolder: nonEmptyString(source.longformFolder, DEFAULT_SETTINGS.longformFolder),
     templatesFolder: nonEmptyString(source.templatesFolder, DEFAULT_SETTINGS.templatesFolder),
-    goalsPath: nonEmptyString(source.goalsPath, DEFAULT_SETTINGS.goalsPath),
-    quickCheckLimit:
-      Number.isSafeInteger(source.quickCheckLimit) && Number(source.quickCheckLimit) > 0
-        ? Number(source.quickCheckLimit)
-        : DEFAULT_SETTINGS.quickCheckLimit,
     weekStartsOn: source.weekStartsOn === "sunday" ? "sunday" : "monday",
     keepFocusAfterSave:
       typeof source.keepFocusAfterSave === "boolean"
@@ -59,9 +58,19 @@ export function normalizeSettings(value: unknown): ZhenshangshuSettings {
       typeof source.reduceTransparency === "boolean"
         ? source.reduceTransparency
         : DEFAULT_SETTINGS.reduceTransparency,
+    composerTags: normalizeComposerTags(source.composerTags),
   };
 }
 
 function nonEmptyString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeComposerTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [...DEFAULT_COMPOSER_TAGS];
+  const tags = value
+    .filter((tag): tag is string => typeof tag === "string")
+    .map((tag) => tag.trim().replace(/^#+/, ""))
+    .filter(Boolean);
+  return tags.length ? [...new Set(tags)] : [...DEFAULT_COMPOSER_TAGS];
 }

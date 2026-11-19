@@ -1,10 +1,10 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
-import { VIEW_TYPE_ZHENSHANGSHU } from "./constants";
+import { VIEW_TYPE_INKPRINT } from "./constants";
 import { SettingsStore } from "./services/SettingsStore";
-import { ZhenshangshuSettingTab } from "./settings/ZhenshangshuSettingTab";
-import { ZhenshangshuView } from "./view/ZhenshangshuView";
+import { InkprintSettingTab } from "./settings/InkprintSettingTab";
+import { InkprintView } from "./view/InkprintView";
 
-export default class ZhenshangshuPlugin extends Plugin {
+export default class InkprintPlugin extends Plugin {
   private settingsStore!: SettingsStore;
 
   async onload(): Promise<void> {
@@ -12,11 +12,11 @@ export default class ZhenshangshuPlugin extends Plugin {
     await this.settingsStore.load();
 
     this.registerView(
-      VIEW_TYPE_ZHENSHANGSHU,
-      (leaf: WorkspaceLeaf) => new ZhenshangshuView(leaf, this.settingsStore),
+      VIEW_TYPE_INKPRINT,
+      (leaf: WorkspaceLeaf) => new InkprintView(leaf, this.settingsStore),
     );
 
-    this.addRibbonIcon("notebook-pen", "打开枕上书", () => {
+    this.addRibbonIcon("notebook-pen", "打开 Inkprint", () => {
       void this.activateView();
     });
 
@@ -29,20 +29,20 @@ export default class ZhenshangshuPlugin extends Plugin {
     });
 
     this.addSettingTab(
-      new ZhenshangshuSettingTab(this.app, this, this.settingsStore, () => {
+      new InkprintSettingTab(this.app, this, this.settingsStore, () => {
         void this.refreshViews();
       }),
     );
   }
 
   private async activateView(): Promise<void> {
-    const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ZHENSHANGSHU);
+    const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_INKPRINT);
     let leaf = existingLeaves[0];
 
     if (!leaf) {
       leaf = this.app.workspace.getLeaf("tab");
       await leaf.setViewState({
-        type: VIEW_TYPE_ZHENSHANGSHU,
+        type: VIEW_TYPE_INKPRINT,
         active: true,
       });
     }
@@ -51,9 +51,9 @@ export default class ZhenshangshuPlugin extends Plugin {
   }
 
   private async refreshViews(): Promise<void> {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ZHENSHANGSHU);
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_INKPRINT);
     for (const leaf of leaves) {
-      if (leaf.view instanceof ZhenshangshuView) await leaf.view.refresh();
+      if (leaf.view instanceof InkprintView) await leaf.view.refresh();
     }
   }
 }

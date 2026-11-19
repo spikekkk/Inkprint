@@ -1,10 +1,11 @@
-import { Notice } from "obsidian";
+import { normalizePath, Notice } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
 import { createEntryId, createRandomSuffix } from "../domain/ids";
 import type { DailyEntry } from "../domain/types";
-import type { ZhenshangshuSettings } from "../settings/defaults";
+import type { InkprintSettings } from "../settings/defaults";
 import type { AppShell } from "./AppShell";
 import { CalendarMonth, dateKey, type CalendarDay } from "./CalendarMonth";
+import { CheckboxImportModal } from "./CheckboxImportModal";
 import { Composer } from "./Composer";
 import { LongformModal } from "./LongformModal";
 
@@ -15,13 +16,13 @@ export class JournalPage {
   private readonly entriesByDay = new Map<string, DailyEntry[]>();
   private calendarHost: HTMLElement | null = null;
   private timelineHost: HTMLElement | null = null;
-  private quickChecksHost: HTMLElement | null = null;
+  private checkboxHost: HTMLElement | null = null;
   private monthTitle: HTMLElement | null = null;
   private composer: Composer | null = null;
 
   constructor(
     private readonly shell: AppShell,
-    private readonly settings: ZhenshangshuSettings,
+    private readonly settings: InkprintSettings,
   ) {
     const today = new Date();
     this.year = today.getFullYear();
@@ -65,10 +66,13 @@ export class JournalPage {
     this.updateMonthTitle();
 
     this.composer = new Composer(container, {
+      tags: this.settings.composerTags,
       onSave: (body) => this.saveEntry(body),
       onCreateLongform: (body) => this.openLongformModal(body),
+      onImportCheckboxes: () => void this.openCheckboxImport(),
+      onInsertImage: (file) => this.insertImage(file),
     });
-    this.quickChecksHost = container.createDiv({ cls: "zss-quick-checks" });
+    this.checkboxHost = container.createDiv({ cls: "zss-checkbox-section" });
     const timeline = container.createEl("section", {
       cls: "zss-timeline",
       attr: { "aria-label": "当天记录" },
@@ -183,7 +187,7 @@ export class JournalPage {
       this.entriesByDay.set(this.selectedDateKey, parseDailyEntries(markdown));
     }
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
-    await this.renderQuickChecks();
+    await this.renderCheckboxes();
   }
 
   private renderTimeline(entries: DailyEntry[]): void {
@@ -226,7 +230,7 @@ export class JournalPage {
     this.entriesByDay.set(this.selectedDateKey, parseDailyEntries(markdown));
     this.renderCalendar();
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
-    await this.renderQuickChecks();
+    await this.renderCheckboxes();
     new Notice("已收进今天的日记。");
   }
 
@@ -281,47 +285,67 @@ export class JournalPage {
     }).open();
   }
 
-  private async renderQuickChecks(): Promise<void> {
-    if (!this.quickChecksHost) return;
-    this.quickChecksHost.empty();
-    if (this.selectedDateKey !== dateKey(new Date())) return;
-    const completedTaskIds =
-      await this.shell.options.services.checkin.getCompletedTaskIds(this.selectedDateKey);
-    const goals = (await this.shell.options.services.goals.load()).map((node) =>
-      node.kind === "task"
-        ? { ...node, done: completedTaskIds.has(node.id) }
-        : node,
-    );
-    const tasks = goals
-      .filter((node) => node.kind === "task" && !node.archived)
-      .slice(0, this.settings.quickCheckLimit);
-    if (!tasks.length) {
-      this.quickChecksHost.createDiv({
-        cls: "zss-quick-empty",
-        text: "还没有快捷打卡任务，可以到“打卡”里新建。",
-      });
-      return;
-    }
+  private async openCheckboxImport(): Promise<void> {
+    const candidates = await this.shell.options.services.checkboxes.listSources();
+    new CheckboxImportModal(
+      this.shell.options.app,
+      this.shell.options.services.checkboxes,
+      this.selectedDateKey,
+      candidates,
+      () => this.renderCheckboxes(),
+    ).open();
+  }
 
-    this.quickChecksHost.createEl("strong", { text: "今日打卡" });
-    const row = this.quickChecksHost.createDiv({ cls: "zss-quick-row" });
-    for (const task of tasks) {
-      const button = row.createEl("button", {
-        cls: "zss-check",
-        attr: { type: "button", "aria-pressed": String(task.done) },
+  private async insertImage(file: File): Promise<string> {
+    const vault = this.shell.options.vault;
+    const folder = normalizePath("Attachments");
+    if (!vault.getAbstractFileByPath(folder)) await vault.createFolder(folder);
+    const safeName = file.name
+      .replace(/[\\/:*?"<>|#[\]^]/g, "-")
+      .replace(/\s+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const path = normalizePath(
+      `${folder}/${Date.now()}-${safeName || "image.png"}`,
+    );
+    await vault.createBinary(path, await file.arrayBuffer());
+    return `![[${path}]]`;
+  }
+
+  private async renderCheckboxes(): Promise<void> {
+    if (!this.checkboxHost) return;
+    this.checkboxHost.empty();
+    const items = await this.shell.options.services.checkboxes.listForDay(
+      this.selectedDateKey,
+    );
+    if (!items.length) return;
+
+    const header = this.checkboxHost.createDiv({ cls: "zss-checkbox-head" });
+    header.createEl("strong", { text: "Checkbox" });
+    header.createSpan({ text: `${items.filter((item) => item.checked).length} / ${items.length}` });
+    const list = this.checkboxHost.createDiv({ cls: "zss-checkbox-list" });
+    for (const item of items) {
+      const label = list.createEl("label", { cls: "zss-checkbox-row" });
+      const input = label.createEl("input", {
+        attr: { type: "checkbox", "aria-label": item.text },
       });
-      button.toggleClass("is-done", task.done);
-      button.createSpan({ cls: "zss-check-mark", text: task.done ? "✓" : "" });
-      button.createSpan({ text: task.title });
-      button.addEventListener("click", async () => {
-        await this.shell.options.services.checkin.setTaskDone(
-          this.selectedDateKey,
-          task,
-          !task.done,
-        );
-        await this.renderQuickChecks();
-        this.shell.invalidatePage("checkin");
+      input.checked = item.checked;
+      input.addEventListener("change", async () => {
+        input.disabled = true;
+        try {
+          await this.shell.options.services.checkboxes.setChecked(
+            this.selectedDateKey,
+            item.lineIndex,
+            input.checked,
+          );
+          await this.renderCheckboxes();
+        } catch (error) {
+          input.checked = item.checked;
+          new Notice(error instanceof Error ? error.message : "更新 Checkbox 失败。");
+        } finally {
+          input.disabled = false;
+        }
       });
+      label.createSpan({ text: item.text });
     }
   }
 

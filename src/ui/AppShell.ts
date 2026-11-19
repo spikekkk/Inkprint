@@ -1,23 +1,24 @@
-import { setIcon, type App, type Vault } from "obsidian";
-import type { ZhenshangshuSettings } from "../settings/defaults";
+import { normalizePath, setIcon, type App, type Vault } from "obsidian";
+import { parseDailyEntries } from "../domain/dailyEntry";
+import type { InkprintSettings } from "../settings/defaults";
+import type { CheckboxService } from "../services/CheckboxService";
 import type { DailyNoteService } from "../services/DailyNoteService";
-import type { CheckinService } from "../services/CheckinService";
-import type { GoalService } from "../services/GoalService";
 import type { LongformService } from "../services/LongformService";
+import type { StatsService } from "../services/StatsService";
 import { createPageState, type AppPage } from "./PageState";
 
 export interface AppShellServices {
   daily: DailyNoteService;
-  checkin: CheckinService;
-  goals: GoalService;
+  checkboxes: CheckboxService;
   longform: LongformService;
+  stats: StatsService;
 }
 
 export interface AppShellOptions {
   app: App;
   vault: Vault;
   container: HTMLElement;
-  settings: ZhenshangshuSettings;
+  settings: InkprintSettings;
   services: AppShellServices;
 }
 
@@ -26,7 +27,7 @@ type PageRenderer = (container: HTMLElement, shell: AppShell) => void | Promise<
 const PAGES: Array<{ id: AppPage; label: string; icon: string }> = [
   { id: "journal", label: "日记", icon: "notebook-pen" },
   { id: "content", label: "内容", icon: "library-big" },
-  { id: "checkin", label: "打卡", icon: "list-checks" },
+  { id: "stats", label: "统计", icon: "chart-no-axes-column" },
   { id: "search", label: "搜索", icon: "search" },
 ];
 
@@ -51,7 +52,7 @@ export class AppShell {
     this.pageContainers.clear();
     this.options.container.empty();
     const { container } = this.options;
-    container.addClass("zhenshangshu-view");
+    container.addClass("inkprint-view");
 
     const root = container.createDiv({ cls: "zss-app" });
     root.toggleClass("is-reduce-transparency", this.options.settings.reduceTransparency);
@@ -59,18 +60,20 @@ export class AppShell {
     const header = root.createEl("header", { cls: "zss-mobile-header" });
     const menuButton = header.createEl("button", {
       cls: "zss-icon-button",
-      attr: { type: "button", "aria-label": "打开枕上书菜单" },
+      attr: { type: "button", "aria-label": "打开 Inkprint 菜单" },
     });
     setIcon(menuButton, "panel-left-open");
     menuButton.addEventListener("click", () => this.setDrawerOpen(true));
 
     const title = header.createDiv({ cls: "zss-mobile-header-title" });
-    title.createEl("strong", { text: "枕上书" });
-    title.createSpan({ text: "把今天留在这里" });
+    title.createEl("strong", { text: "Inkprint" });
+    title.createSpan({ text: "AI writes its own. I write mine." });
 
     const body = root.createDiv({ cls: "zss-body" });
     const sidebar = body.createEl("aside", { cls: "zss-sidebar" });
     this.renderBrand(sidebar);
+    const stats = sidebar.createDiv({ cls: "zss-sidebar-stats" });
+    void this.populateSidebarStats(stats);
     this.renderNavigation(sidebar);
     const pageHost = body.createEl("main", { cls: "zss-page-host" });
 
@@ -91,7 +94,7 @@ export class AppShell {
     this.drawerBackdrop.addEventListener("click", () => this.setDrawerOpen(false));
     this.drawer = root.createEl("aside", {
       cls: "zss-mobile-drawer",
-      attr: { "aria-hidden": "true", "aria-label": "枕上书菜单" },
+      attr: { "aria-hidden": "true", "aria-label": "Inkprint 菜单" },
     });
     this.renderBrand(this.drawer);
     this.renderNavigation(this.drawer);
@@ -210,8 +213,36 @@ export class AppShell {
 
   private renderBrand(container: HTMLElement): void {
     const brand = container.createDiv({ cls: "zss-brand" });
-    brand.createEl("strong", { text: "枕上书" });
-    brand.createSpan({ text: "把今天留在这里" });
+    brand.createEl("strong", { text: "Inkprint" });
+    brand.createSpan({ text: "AI writes its own. I write mine." });
+  }
+
+  private async populateSidebarStats(container: HTMLElement): Promise<void> {
+    const stat = (label: string) => {
+      const item = container.createDiv({ cls: "zss-sidebar-stat" });
+      const value = item.createEl("strong", { text: "—" });
+      item.createSpan({ text: label });
+      return value;
+    };
+    const noteValue = stat("笔记");
+    const dayValue = stat("记录天数");
+    const tagValue = stat("标签");
+
+    const folder = normalizePath(this.options.settings.dailyFolder);
+    const files = this.options.vault
+      .getFiles()
+      .filter((file) => file.extension === "md" && file.path.startsWith(`${folder}/`));
+    const tags = new Set<string>();
+    let noteCount = 0;
+
+    for (const file of files) {
+      const entries = parseDailyEntries(await this.options.vault.cachedRead(file));
+      noteCount += entries.length;
+      entries.forEach((entry) => entry.tags.forEach((tag) => tags.add(tag)));
+    }
+    noteValue.setText(String(noteCount));
+    dayValue.setText(String(files.length));
+    tagValue.setText(String(tags.size));
   }
 
   private renderNavigation(container: HTMLElement): void {

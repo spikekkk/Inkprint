@@ -1,1 +1,1 @@
-export const VIEW_TYPE_ZHENSHANGSHU = "zhenshangshu-view";
+export const VIEW_TYPE_INKPRINT = "inkprint-view";
