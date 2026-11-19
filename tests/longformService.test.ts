@@ -47,4 +47,30 @@ describe("LongformService", () => {
     ).rejects.toThrow("empty");
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("uses the selected folder and applies its Template.md", async () => {
+    const template = { path: "Essays/Template.md" };
+    const create = vi.fn(async (_path: string, _data: string) => ({ path: "Essays/新文章.md" }));
+    const vault = {
+      getFileByPath: vi.fn((path: string) => (path === "Essays/Template.md" ? template : null)),
+      getAbstractFileByPath: vi.fn(() => ({ children: [] })),
+      createFolder: vi.fn(async () => undefined),
+      cachedRead: vi.fn(async () => "# {{title}}\n\n{{body}}\n\n## 补充\n"),
+      create,
+    } as unknown as Vault;
+    const service = new LongformService(vault, { longformFolder: "Longform" });
+
+    await service.create({
+      title: "新文章",
+      body: "正文内容",
+      sourceEntryId: "entry-source",
+      journalDay: "2026-11-19",
+      folder: "Essays",
+    });
+
+    expect(create.mock.calls[0]?.[0]).toBe("Essays/新文章.md");
+    expect(create.mock.calls[0]?.[1]).toContain("# 新文章");
+    expect(create.mock.calls[0]?.[1]).toContain("正文内容");
+    expect(create.mock.calls[0]?.[1]).toContain("## 补充");
+  });
 });

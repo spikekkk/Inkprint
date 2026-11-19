@@ -2,11 +2,16 @@ import { Modal, Notice, type App } from "obsidian";
 
 export class LongformModal extends Modal {
   private titleInput: HTMLInputElement | null = null;
+  private folderSelect: HTMLSelectElement | null = null;
+  private templateHint: HTMLElement | null = null;
 
   constructor(
     app: App,
     private readonly body: string,
-    private readonly onSubmit: (title: string) => Promise<void>,
+    private readonly folders: readonly string[],
+    private readonly defaultFolder: string,
+    private readonly templatePathFor: (folder: string) => string | null,
+    private readonly onSubmit: (title: string, folder: string) => Promise<void>,
   ) {
     super(app);
   }
@@ -24,6 +29,21 @@ export class LongformModal extends Modal {
         "aria-label": "长文标题",
       },
     });
+    const folderLabel = this.contentEl.createEl("label", { cls: "zss-longform-folder" });
+    folderLabel.createSpan({ text: "保存到" });
+    this.folderSelect = folderLabel.createEl("select", {
+      attr: { "aria-label": "长文保存目录" },
+    });
+    this.folders.forEach((folder) => {
+      this.folderSelect?.createEl("option", {
+        value: folder,
+        text: folder || "Vault 根目录",
+      });
+    });
+    this.folderSelect.value = this.defaultFolder;
+    this.templateHint = this.contentEl.createDiv({ cls: "zss-template-hint" });
+    this.folderSelect.addEventListener("change", () => this.updateTemplateHint());
+    this.updateTemplateHint();
     if (this.body) {
       this.contentEl.createEl("p", {
         cls: "zss-modal-preview",
@@ -59,11 +79,19 @@ export class LongformModal extends Modal {
     }
     button.disabled = true;
     try {
-      await this.onSubmit(title);
+      await this.onSubmit(title, this.folderSelect?.value ?? this.defaultFolder);
       this.close();
     } catch (error) {
       new Notice(error instanceof Error ? error.message : "创建长文失败。");
       button.disabled = false;
     }
+  }
+
+  private updateTemplateHint(): void {
+    if (!this.templateHint || !this.folderSelect) return;
+    const template = this.templatePathFor(this.folderSelect.value);
+    this.templateHint.setText(
+      template ? `会套用模板：${template}` : "该目录没有 Template.md，将使用默认长文格式。",
+    );
   }
 }

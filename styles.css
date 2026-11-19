@@ -81,8 +81,10 @@
 
 button.zss-nav-item {
   min-height: 38px;
+  width: 100%;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   padding: 6px 12px;
   border-radius: var(--radius-m);
@@ -713,6 +715,55 @@ button.zss-nav-item.is-active {
   font-size: 10px;
 }
 
+.zss-time-buoys {
+  display: grid;
+  gap: 7px;
+}
+
+.zss-time-buoy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.zss-time-buoy-head span {
+  color: var(--zss-muted);
+  font-size: 10px;
+}
+
+.zss-time-buoy-item {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--zss-accent);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  background: var(--zss-soft);
+}
+
+.zss-time-buoy-item small {
+  color: var(--zss-accent);
+  font-size: 10px;
+}
+
+.zss-time-buoy-item p {
+  margin: 0;
+  line-height: var(--line-height-normal);
+  white-space: pre-wrap;
+}
+
+.zss-time-buoy-item button {
+  justify-self: start;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 1px solid var(--zss-border);
+  border-radius: var(--radius-s);
+  background: var(--zss-surface);
+  color: var(--zss-muted);
+  cursor: pointer;
+  font-size: 10px;
+}
+
 .zss-timeline {
   display: grid;
   gap: 0;
@@ -777,6 +828,27 @@ button.zss-nav-item.is-active {
   background: var(--zss-accent-soft);
   color: var(--zss-accent);
   font-size: var(--font-ui-smaller);
+}
+
+.zss-entry-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.zss-entry-relation {
+  min-height: 27px;
+  padding: 3px 7px;
+  border: 1px solid var(--zss-border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--zss-muted);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.zss-entry-relation:hover {
+  border-color: var(--zss-accent);
+  color: var(--text-accent);
 }
 
 .zss-goal-heatmap {
@@ -1313,6 +1385,25 @@ button.zss-nav-item.is-active {
   background: var(--background-secondary);
   color: var(--text-muted);
   white-space: pre-wrap;
+}
+
+.zss-longform-folder {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  color: var(--zss-muted);
+  font-size: 11px;
+}
+
+.zss-longform-folder select {
+  width: 100%;
+  min-height: 36px;
+}
+
+.zss-template-hint {
+  margin: 8px 0 12px;
+  color: var(--zss-muted);
+  font-size: 10px;
 }
 
 @media (max-width: 700px) {

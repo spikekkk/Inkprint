@@ -1,10 +1,8 @@
 import { normalizePath, type TFile } from "obsidian";
-import { RelationIndex } from "../services/RelationIndex";
 import type { AppShell } from "./AppShell";
 import { RelationPanel } from "./RelationPanel";
 
 export class ContentPage {
-  private readonly index = new RelationIndex([]);
   private readonly panel: RelationPanel;
 
   constructor(private readonly shell: AppShell) {
@@ -23,7 +21,10 @@ export class ContentPage {
       .getFiles()
       .filter((file) => file.extension === "md" && file.path.startsWith(`${folder}/`))
       .sort((first, second) => second.stat.mtime - first.stat.mtime);
-    await this.index.rebuild(this.shell.options.vault, this.shell.options.settings.dailyFolder);
+    await this.shell.options.services.relations.rebuild(
+      this.shell.options.vault,
+      this.shell.options.settings.dailyFolder,
+    );
 
     const list = container.createDiv({ cls: "zss-content-list" });
     if (!files.length) {
@@ -52,7 +53,7 @@ export class ContentPage {
       .trim()
       .slice(0, 180);
     const target = { path: file.path.replace(/\.md$/i, ""), blockId: "source" };
-    const referrers = this.index.getReferrers(target);
+    const referrers = this.shell.options.services.relations.getReferrers(target);
 
     const card = parent.createEl("article", { cls: "zss-content-card" });
     card.createEl("small", {

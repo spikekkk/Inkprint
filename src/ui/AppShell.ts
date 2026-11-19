@@ -4,7 +4,9 @@ import type { InkprintSettings } from "../settings/defaults";
 import type { CheckboxService } from "../services/CheckboxService";
 import type { DailyNoteService } from "../services/DailyNoteService";
 import type { LongformService } from "../services/LongformService";
+import type { RelationIndex } from "../services/RelationIndex";
 import type { StatsService } from "../services/StatsService";
+import type { TimeBuoyService } from "../services/TimeBuoyService";
 import { createPageState, type AppPage } from "./PageState";
 
 export interface AppShellServices {
@@ -12,6 +14,8 @@ export interface AppShellServices {
   checkboxes: CheckboxService;
   longform: LongformService;
   stats: StatsService;
+  relations: RelationIndex;
+  timeBuoys: TimeBuoyService;
 }
 
 export interface AppShellOptions {

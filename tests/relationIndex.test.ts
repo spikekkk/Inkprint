@@ -23,4 +23,19 @@ describe("relation index", () => {
       "entry-b",
     );
   });
+
+  it("resolves a source entry by its stable ID", () => {
+    const index = buildRelationIndex([
+      {
+        day: "2026-11-12",
+        entryId: "entry-b",
+        createdAt: "2026-11-12T21:08:00+08:00",
+        text: "[[Longform/A#^source]]",
+      },
+    ]);
+    expect(index.getSource("entry-b")).toMatchObject({
+      day: "2026-11-12",
+      entryId: "entry-b",
+    });
+  });
 });

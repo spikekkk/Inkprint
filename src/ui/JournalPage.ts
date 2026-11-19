@@ -1,4 +1,4 @@
-import { normalizePath, Notice } from "obsidian";
+import { normalizePath, Notice, TFolder } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
 import { createEntryId, createRandomSuffix } from "../domain/ids";
 import type { DailyEntry } from "../domain/types";
@@ -8,6 +8,8 @@ import { CalendarMonth, dateKey, type CalendarDay } from "./CalendarMonth";
 import { CheckboxImportModal } from "./CheckboxImportModal";
 import { Composer } from "./Composer";
 import { LongformModal } from "./LongformModal";
+import { RelationPanel } from "./RelationPanel";
+import { TimeBuoyPickerModal } from "./TimeBuoyPickerModal";
 
 export class JournalPage {
   private year: number;
@@ -17,8 +19,10 @@ export class JournalPage {
   private calendarHost: HTMLElement | null = null;
   private timelineHost: HTMLElement | null = null;
   private checkboxHost: HTMLElement | null = null;
+  private timeBuoyHost: HTMLElement | null = null;
   private monthTitle: HTMLElement | null = null;
   private composer: Composer | null = null;
+  private readonly relationPanel: RelationPanel;
 
   constructor(
     private readonly shell: AppShell,
@@ -28,6 +32,7 @@ export class JournalPage {
     this.year = today.getFullYear();
     this.monthIndex = today.getMonth();
     this.selectedDateKey = dateKey(today);
+    this.relationPanel = new RelationPanel(shell);
   }
 
   async render(container: HTMLElement): Promise<void> {
@@ -71,8 +76,10 @@ export class JournalPage {
       onCreateLongform: (body) => this.openLongformModal(body),
       onImportCheckboxes: () => void this.openCheckboxImport(),
       onInsertImage: (file) => this.insertImage(file),
+      onInsertTimeBuoy: () => this.openTimeBuoyPicker(),
     });
     this.checkboxHost = container.createDiv({ cls: "zss-checkbox-section" });
+    this.timeBuoyHost = container.createDiv({ cls: "zss-time-buoys" });
     const timeline = container.createEl("section", {
       cls: "zss-timeline",
       attr: { "aria-label": "当天记录" },
@@ -186,8 +193,13 @@ export class JournalPage {
       const markdown = await this.shell.options.services.daily.read(this.selectedDateKey);
       this.entriesByDay.set(this.selectedDateKey, parseDailyEntries(markdown));
     }
+    await this.shell.options.services.relations.rebuild(
+      this.shell.options.vault,
+      this.settings.dailyFolder,
+    );
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
     await this.renderCheckboxes();
+    await this.renderTimeBuoys();
   }
 
   private renderTimeline(entries: DailyEntry[]): void {
@@ -213,6 +225,31 @@ export class JournalPage {
         const tags = item.createDiv({ cls: "zss-entry-tags" });
         entry.tags.forEach((tag) => tags.createSpan({ text: `#${tag}` }));
       }
+      const target = {
+        path: normalizePath(`${this.settings.dailyFolder}/${this.selectedDateKey}`),
+        blockId: entry.blockId,
+      };
+      const incoming = this.shell.options.services.relations.getReferrers(target);
+      const outgoing = this.shell.options.services.relations.getOutgoing(entry.entryId);
+      const actions = item.createDiv({ cls: "zss-entry-actions" });
+      const relationButton = actions.createEl("button", {
+        cls: "zss-entry-relation",
+        text: incoming.length || outgoing.length
+          ? `关联 ${incoming.length + outgoing.length}`
+          : "添加关联",
+        attr: { type: "button" },
+      });
+      relationButton.addEventListener("click", () => {
+        this.relationPanel.openEntry({
+          title: `${this.selectedDateKey} · ${
+            entry.createdAt.match(/T(\d{2}:\d{2})/)?.[1] ?? ""
+          }`,
+          subtitle: "Daily 记录",
+          body: entry.body,
+          incoming,
+          outgoing,
+        });
+      });
     }
   }
 
@@ -228,9 +265,14 @@ export class JournalPage {
     });
     const markdown = await this.shell.options.services.daily.read(this.selectedDateKey);
     this.entriesByDay.set(this.selectedDateKey, parseDailyEntries(markdown));
+    await this.shell.options.services.relations.rebuild(
+      this.shell.options.vault,
+      this.settings.dailyFolder,
+    );
     this.renderCalendar();
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
     await this.renderCheckboxes();
+    await this.renderTimeBuoys();
     new Notice("已收进今天的日记。");
   }
 
@@ -259,7 +301,21 @@ export class JournalPage {
   }
 
   private openLongformModal(body: string): void {
-    new LongformModal(this.shell.options.app, body, async (title) => {
+    const folders = [
+      this.settings.longformFolder,
+      ...this.shell.options.vault
+        .getAllLoadedFiles()
+        .filter((file): file is TFolder => file instanceof TFolder)
+        .map((folder) => folder.path)
+        .filter((folder) => folder !== this.settings.longformFolder),
+    ].sort((first, second) => first.localeCompare(second));
+    new LongformModal(
+      this.shell.options.app,
+      body,
+      folders,
+      this.settings.longformFolder,
+      (folder) => this.shell.options.services.longform.findTemplate(folder)?.path ?? null,
+      async (title, folder) => {
       const now = new Date();
       const sourceEntryId = createEntryId(now, createRandomSuffix());
       const createdAt = localTimestamp(now);
@@ -268,6 +324,7 @@ export class JournalPage {
         body,
         sourceEntryId,
         journalDay: this.selectedDateKey,
+        folder,
       });
       await this.shell.options.services.daily.append(this.selectedDateKey, {
         entryId: sourceEntryId,
@@ -282,7 +339,8 @@ export class JournalPage {
       await this.showSelectedDay();
       this.shell.invalidatePage("content");
       new Notice("长文已创建，Daily 入口和引用已保留。");
-    }).open();
+      },
+    ).open();
   }
 
   private async openCheckboxImport(): Promise<void> {
@@ -294,6 +352,12 @@ export class JournalPage {
       candidates,
       () => this.renderCheckboxes(),
     ).open();
+  }
+
+  private openTimeBuoyPicker(): void {
+    new TimeBuoyPickerModal(this.shell.options.app, (date) => {
+      this.composer?.insertText(` @${date} `);
+    }).open();
   }
 
   private async insertImage(file: File): Promise<string> {
@@ -347,6 +411,34 @@ export class JournalPage {
       });
       label.createSpan({ text: item.text });
     }
+  }
+
+  private async renderTimeBuoys(): Promise<void> {
+    if (!this.timeBuoyHost) return;
+    this.timeBuoyHost.empty();
+    const items = await this.shell.options.services.timeBuoys.listForDate(
+      this.selectedDateKey,
+    );
+    if (!items.length) return;
+
+    const host = this.timeBuoyHost;
+    const header = host.createDiv({ cls: "zss-time-buoy-head" });
+    header.createEl("strong", { text: "此刻浮现" });
+    header.createSpan({ text: `${items.length} 条旧记录` });
+    items.forEach((item) => {
+      const row = host.createEl("article", { cls: "zss-time-buoy-item" });
+      row.createEl("small", {
+        text: `${item.sourceDate} · ${
+          item.createdAt.match(/T(\d{2}:\d{2})/)?.[1] ?? ""
+        }`,
+      });
+      row.createEl("p", { text: item.body.replace(/@\d{4}-\d{2}-\d{2}/g, "").trim() });
+      const button = row.createEl("button", {
+        text: "回到来源",
+        attr: { type: "button" },
+      });
+      button.addEventListener("click", () => void this.selectDate(item.sourceDate));
+    });
   }
 
   private updateMonthTitle(): void {

@@ -17,9 +17,11 @@ export interface RelationItem extends RelationSource {
 export class RelationIndex {
   private readonly referrers = new Map<string, RelationItem[]>();
   private readonly outgoing = new Map<string, RelationTarget[]>();
+  private readonly sources = new Map<string, RelationSource>();
 
   constructor(sources: readonly RelationSource[]) {
     for (const source of sources) {
+      this.sources.set(source.entryId, source);
       const targets = extractRelationTargets(source.text);
       this.outgoing.set(source.entryId, targets);
       for (const target of targets) {
@@ -37,6 +39,10 @@ export class RelationIndex {
 
   getOutgoing(entryId: string): readonly RelationTarget[] {
     return this.outgoing.get(entryId) ?? [];
+  }
+
+  getSource(entryId: string): RelationSource | undefined {
+    return this.sources.get(entryId);
   }
 
   async rebuild(vault: Vault, dailyFolder: string): Promise<void> {
@@ -63,6 +69,8 @@ export class RelationIndex {
     rebuilt.referrers.forEach((items, key) => this.referrers.set(key, items));
     this.outgoing.clear();
     rebuilt.outgoing.forEach((targets, key) => this.outgoing.set(key, [...targets]));
+    this.sources.clear();
+    rebuilt.sources.forEach((source, key) => this.sources.set(key, { ...source }));
   }
 }
 

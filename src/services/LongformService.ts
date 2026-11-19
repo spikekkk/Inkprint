@@ -1,10 +1,11 @@
-import { normalizePath, type Vault } from "obsidian";
+import { normalizePath, type TFile, type Vault } from "obsidian";
 
 export interface LongformInput {
   title: string;
   body: string;
   sourceEntryId: string;
   journalDay: string;
+  folder?: string;
 }
 
 export interface LongformResult {
@@ -24,11 +25,18 @@ export class LongformService {
     if (!title) throw new Error("Longform title is required.");
     if (!input.body.trim()) throw new Error("Longform body cannot be empty.");
 
-    const folder = normalizePath(this.config.longformFolder);
+    const folder = normalizePath(input.folder?.trim() || this.config.longformFolder);
     await this.ensureFolder(folder);
     const baseName = sanitizeFileName(title);
     const path = await this.findAvailablePath(folder, baseName);
     const blockId = "source";
+    const template = this.findTemplate(folder);
+    const templateContent = template
+      ? stripFrontmatter(await this.vault.cachedRead(template))
+      : "";
+    const body = templateContent
+      ? renderTemplate(templateContent, title, input.body.trim(), input)
+      : `# ${title}\n\n${input.body.trim()}`;
     const markdown = [
       "---",
       `title: ${JSON.stringify(title)}`,
@@ -36,13 +44,13 @@ export class LongformService {
       `journal-day: ${input.journalDay}`,
       "---",
       "",
-      `# ${title}`,
+      body.trim(),
       "",
-      input.body.trim(),
+      body.includes(`^${blockId}`) ? "" : `^${blockId}`,
       "",
-      `^${blockId}`,
-      "",
-    ].join("\n");
+    ]
+      .filter((line, index, lines) => line !== "" || lines[index - 1] !== "")
+      .join("\n");
 
     await this.vault.create(path, markdown);
     const target = path.replace(/\.md$/i, "");
@@ -51,6 +59,25 @@ export class LongformService {
       blockId,
       link: `[[${target}#^${blockId}|${title}]]`,
     };
+  }
+
+  findTemplate(folder: string): TFile | null {
+    const normalized = normalizePath(folder);
+    for (const name of ["Template.md", "template.md", "_Template.md", "_template.md"]) {
+      const file = this.vault.getFileByPath(normalizePath(`${normalized}/${name}`));
+      if (file) return file;
+    }
+    if (typeof this.vault.getFiles !== "function") return null;
+    return (
+      this.vault
+        .getFiles()
+        .find(
+          (file) =>
+            file.path.startsWith(`${normalized}/`) &&
+            ["template.md", "_template.md"].includes(file.name.toLowerCase()) &&
+            file.path.slice(normalized.length + 1).indexOf("/") < 0,
+        ) ?? null
+    );
   }
 
   private async findAvailablePath(folder: string, baseName: string): Promise<string> {
@@ -80,4 +107,24 @@ function sanitizeFileName(title: string): string {
     .replace(/^[.\s-]+|[.\s-]+$/g, "")
     .slice(0, 96);
   return sanitized || "未命名长文";
+}
+
+function stripFrontmatter(markdown: string): string {
+  return markdown.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+}
+
+function renderTemplate(
+  template: string,
+  title: string,
+  body: string,
+  input: LongformInput,
+): string {
+  const hasBodyToken = template.includes("{{body}}");
+  const rendered = template
+    .replace(/\{\{title\}\}/g, title)
+    .replace(/\{\{body\}\}/g, body)
+    .replace(/\{\{date\}\}/g, input.journalDay)
+    .replace(/\{\{journal-day\}\}/g, input.journalDay)
+    .replace(/\{\{source-entry-id\}\}/g, input.sourceEntryId);
+  return hasBodyToken ? rendered : `${rendered.trimEnd()}\n\n${body}`;
 }

@@ -6,6 +6,7 @@ export interface ComposerOptions {
   onCreateLongform(body: string): void;
   onImportCheckboxes(): void;
   onInsertImage(file: File): Promise<string>;
+  onInsertTimeBuoy(): void;
 }
 
 export class Composer {
@@ -51,15 +52,13 @@ export class Composer {
     this.toolbarButtons = [
       this.createTool(tools, "hash", "插入标签", () => this.insertText("#")),
       this.createTool(tools, "image", "插入图片", () => this.chooseImage()),
+      this.createTool(tools, "calendar-clock", "添加时光浮标", () =>
+        this.options.onInsertTimeBuoy(),
+      ),
       this.createTool(tools, "list-todo", "导入原来的 Checkbox", () =>
         this.options.onImportCheckboxes(),
       ),
       this.createTool(tools, "file-text", "创建长文", () => this.createLongform()),
-      this.createTool(tools, "bold", "加粗", () => this.wrapSelection("**", "**", "文字")),
-      this.createTool(tools, "highlighter", "高亮", () => this.wrapSelection("==", "==", "高亮")),
-      this.createTool(tools, "brackets", "插入链接", () => this.insertText("[[")),
-      this.createTool(tools, "list", "无序列表", () => this.insertLinePrefix("- ")),
-      this.createTool(tools, "list-ordered", "有序列表", () => this.insertLinePrefix("1. ")),
     ];
 
     const actions = bar.createDiv({ cls: "zss-composer-actions" });
@@ -164,21 +163,6 @@ export class Composer {
         });
     });
     fileInput.click();
-  }
-
-  private wrapSelection(before: string, after: string, fallback: string): void {
-    const selected = this.textarea.value.slice(
-      this.textarea.selectionStart,
-      this.textarea.selectionEnd,
-    );
-    this.insertText(`${before}${selected || fallback}${after}`);
-  }
-
-  private insertLinePrefix(prefix: string): void {
-    const lineStart = this.textarea.value.lastIndexOf("\n", this.textarea.selectionStart - 1) + 1;
-    this.textarea.setRangeText(prefix, lineStart, lineStart, "end");
-    this.textarea.focus();
-    this.resize();
   }
 
   private appendTag(tag: string): void {
