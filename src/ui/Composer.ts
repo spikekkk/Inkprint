@@ -11,6 +11,7 @@ export interface ComposerOptions {
   onOpenFutureTask(): void;
   onCreateLongform(body: string): void;
   onInsertImage(file: File): Promise<string>;
+  resolveImage?(path: string): string | null;
 }
 
 export class Composer {
@@ -39,6 +40,7 @@ export class Composer {
       t("composer.writeLabel"),
       t("composer.writePlaceholder"),
       (value) => this.updateAvailability(value),
+      this.options.resolveImage,
     );
     this.el.addEventListener("pointerdown", (event) => {
       const target = event.target;

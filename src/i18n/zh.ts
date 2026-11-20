@@ -95,6 +95,8 @@ export const zh: Record<keyof typeof en, string> = {
   "composer.tag": "标签",
   "composer.relate": "关联",
   "composer.image": "图片",
+  "composer.imageInserted": "已插入",
+  "composer.removeImage": "移除图片",
   "composer.futureTask": "未来待办",
   "composer.longform": "创建长文",
   "composer.more": "更多",

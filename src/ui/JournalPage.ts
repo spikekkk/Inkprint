@@ -4,6 +4,7 @@ import {
   normalizePath,
   Notice,
   Platform,
+  TFile,
   TFolder,
 } from "obsidian";
 import {
@@ -121,6 +122,7 @@ export class JournalPage {
       onOpenFutureTask: () => this.openFutureTaskPicker(),
       onCreateLongform: (body) => this.openLongformModal(body),
       onInsertImage: (file) => this.insertImage(file),
+      resolveImage: (path) => this.resolveImagePath(path),
     });
     this.checkboxHost = container.createDiv({ cls: "zss-checkbox-section" });
     this.futureTaskHost = container.createDiv({ cls: "zss-future-tasks" });
@@ -699,6 +701,14 @@ export class JournalPage {
     );
     await vault.createBinary(path, await file.arrayBuffer());
     return `![[${path}]]`;
+  }
+
+  private resolveImagePath(path: string): string | null {
+    if (/^(?:https?:|data:|app:)/u.test(path)) return path;
+    const file = this.shell.options.vault.getAbstractFileByPath(normalizePath(path));
+    return file instanceof TFile
+      ? this.shell.options.vault.getResourcePath(file)
+      : null;
   }
 
   private async renderCheckboxes(): Promise<void> {

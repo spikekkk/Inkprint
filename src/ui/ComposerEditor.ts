@@ -9,6 +9,7 @@ import {
   type DecorationSet,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { scanComposerImages, type ComposerImageRange } from "./composerImages";
 import { scanTaskLines, toggleTaskInDocument } from "./composerTasks";
 import { t } from "../i18n";
 
@@ -60,6 +61,72 @@ class TaskCheckboxWidget extends WidgetType {
   }
 }
 
+class ImagePreviewWidget extends WidgetType {
+  constructor(
+    private readonly image: ComposerImageRange,
+    private readonly url: string,
+  ) {
+    super();
+  }
+
+  eq(other: ImagePreviewWidget): boolean {
+    return (
+      this.image.from === other.image.from &&
+      this.image.to === other.image.to &&
+      this.image.path === other.image.path &&
+      this.url === other.url
+    );
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const card = document.createElement("span");
+    card.className = "zss-cm-image";
+    card.contentEditable = "false";
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-label", `${t("composer.image")}：${fileName(this.image.path)}`);
+
+    const preview = document.createElement("img");
+    preview.src = this.url;
+    preview.alt = fileName(this.image.path);
+    preview.loading = "lazy";
+    preview.draggable = false;
+
+    const copy = document.createElement("span");
+    copy.className = "zss-cm-image-copy";
+    const name = document.createElement("small");
+    name.textContent = fileName(this.image.path);
+    const kind = document.createElement("span");
+    kind.textContent = t("composer.imageInserted");
+    copy.append(name, kind);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "zss-cm-image-remove";
+    remove.setAttribute("aria-label", t("composer.removeImage"));
+    remove.textContent = "×";
+    remove.addEventListener("pointerdown", (event) => event.stopPropagation());
+    remove.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({
+        changes: { from: this.image.from, to: this.image.to, insert: "" },
+      });
+      view.focus();
+    });
+
+    card.append(preview, copy, remove);
+    return card;
+  }
+
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
+
+function fileName(path: string): string {
+  return path.split("/").filter(Boolean).pop() ?? path;
+}
+
 function buildTaskDecorations(state: EditorState): DecorationSet {
   const ranges = scanTaskLines(state.doc.toString()).map((task) => [
     Decoration.line({
@@ -81,6 +148,32 @@ const taskDecorations = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+function imageDecorations(
+  resolveImage: (path: string) => string | null,
+): StateField<DecorationSet> {
+  const build = (state: EditorState): DecorationSet =>
+    Decoration.set(
+      scanComposerImages(state.doc.toString()).flatMap((image) => {
+        const url = resolveImage(image.path);
+        return url
+          ? [
+              Decoration.replace({
+                widget: new ImagePreviewWidget(image, url),
+              }).range(image.from, image.to),
+            ]
+          : [];
+      }),
+      true,
+    );
+
+  return StateField.define<DecorationSet>({
+    create: build,
+    update: (decorations, transaction) =>
+      transaction.docChanged ? build(transaction.state) : decorations,
+    provide: (field) => EditorView.decorations.from(field),
+  });
+}
+
 export class ComposerEditor {
   readonly view: EditorView;
 
@@ -89,6 +182,7 @@ export class ComposerEditor {
     private readonly label: string,
     private readonly hint: string,
     private readonly onChange?: (value: string) => void,
+    private readonly resolveImage: (path: string) => string | null = () => null,
   ) {
     this.view = new EditorView({
       parent,
@@ -173,6 +267,7 @@ export class ComposerEditor {
         keymap.of([...historyKeymap, ...defaultKeymap]),
         placeholderCompartment.of(placeholder(this.hint)),
         taskDecorations,
+        imageDecorations(this.resolveImage),
       ],
     });
   }

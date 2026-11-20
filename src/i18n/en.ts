@@ -93,6 +93,8 @@ export const en = {
   "composer.tag": "Tag",
   "composer.relate": "Relate",
   "composer.image": "Image",
+  "composer.imageInserted": "Inserted",
+  "composer.removeImage": "Remove image",
   "composer.futureTask": "Future task",
   "composer.longform": "Longform",
   "composer.more": "More",

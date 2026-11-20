@@ -69,6 +69,31 @@ describe("Composer", () => {
     expect(save?.disabled).toBe(false);
   });
 
+  it("renders image embeds as removable composer thumbnails", () => {
+    const host = document.createElement("div");
+    const composer = new Composer(host, {
+      tags: [],
+      onSave: vi.fn(),
+      onUpdate: vi.fn(),
+      onOpenRelations: vi.fn(),
+      onOpenFutureTask: vi.fn(),
+      onCreateLongform: vi.fn(),
+      onInsertImage: vi.fn(),
+      resolveImage: (path) => `app://vault/${path}`,
+    });
+
+    composer.insertText("![[Attachments/dusk.png]]");
+    const preview = host.querySelector<HTMLElement>(".zss-cm-image");
+    expect(preview).not.toBeNull();
+    expect(preview?.querySelector("img")?.getAttribute("src")).toBe(
+      "app://vault/Attachments/dusk.png",
+    );
+
+    preview?.querySelector<HTMLButtonElement>('[aria-label="移除图片"]')?.click();
+    const editor = EditorView.findFromDOM(host.querySelector<HTMLElement>(".cm-editor")!);
+    expect(editor?.state.doc.toString()).toBe("");
+  });
+
   it("uses Enter to save while Shift+Enter remains available for new lines", async () => {
     const host = document.createElement("div");
     const onSave = vi.fn(async () => undefined);

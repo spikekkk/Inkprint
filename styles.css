@@ -1049,6 +1049,71 @@ button.zss-icon-button:hover {
   color: var(--zss-muted);
 }
 
+.zss-cm-image {
+  max-width: min(250px, 100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 10px 3px 0;
+  padding: 4px 5px;
+  border: 1px solid color-mix(in srgb, var(--zss-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+  vertical-align: middle;
+  line-height: 1.2;
+}
+
+.zss-cm-image img {
+  width: 72px;
+  height: 56px;
+  flex: 0 0 auto;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--background-modifier-border);
+}
+
+.zss-cm-image-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.zss-cm-image-copy small {
+  max-width: 118px;
+  overflow: hidden;
+  color: var(--text-normal);
+  font-size: 10px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zss-cm-image-copy span {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.zss-cm-image-remove {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.zss-cm-image-remove:hover,
+.zss-cm-image-remove:focus-visible {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
 .zss-composer textarea {
   width: 100%;
   min-height: 52px;
@@ -3252,6 +3317,19 @@ button.zss-relation-picker-item:focus-visible {
     min-height: 44px;
     padding-inline: 10px;
     font-size: 12px;
+  }
+
+  .zss-cm-image {
+    max-width: 100%;
+  }
+
+  .zss-cm-image img {
+    width: 64px;
+    height: 52px;
+  }
+
+  .zss-cm-image-copy small {
+    max-width: 96px;
   }
 
   .zss-send-button {
