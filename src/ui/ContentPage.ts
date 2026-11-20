@@ -1,4 +1,4 @@
-import { normalizePath, type TFile } from "obsidian";
+import type { TFile } from "obsidian";
 import type { AppShell } from "./AppShell";
 import { RelationPanel } from "./RelationPanel";
 
@@ -16,10 +16,12 @@ export class ContentPage {
     copy.createEl("h1", { text: "内容" });
     copy.createSpan({ text: "长文正文独立保存，引用与来源集中在这里回看。" });
 
-    const folder = normalizePath(this.shell.options.settings.longformFolder);
     const files = this.shell.options.vault
-      .getFiles()
-      .filter((file) => file.extension === "md" && file.path.startsWith(`${folder}/`))
+      .getMarkdownFiles()
+      .filter((file) => {
+        const frontmatter = this.shell.options.app.metadataCache.getFileCache(file)?.frontmatter;
+        return typeof frontmatter?.["source-entry-id"] === "string";
+      })
       .sort((first, second) => second.stat.mtime - first.stat.mtime);
     await this.shell.options.services.relations.rebuild(
       this.shell.options.vault,

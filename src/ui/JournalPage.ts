@@ -41,7 +41,11 @@ export class JournalPage {
     const header = container.createDiv({ cls: "zss-page-heading" });
     const copy = header.createDiv();
     copy.createEl("h1", { text: "今天" });
-    copy.createSpan({ text: "在日历里选一天，再写进当天的 Markdown。" });
+    copy.createSpan({
+      text: Platform.isMobile
+        ? "在日历里选一天，再写进当天的 Markdown。"
+        : "把此刻写下来，保存到今天的 Daily。",
+    });
 
     const monthCard = container.createEl("section", {
       cls: "zss-calendar-card",
@@ -71,6 +75,11 @@ export class JournalPage {
     labels.forEach((label) => weekdays.createSpan({ text: label }));
     this.calendarHost = monthCard.createDiv({ cls: "zss-calendar" });
     this.updateMonthTitle();
+    if (!Platform.isMobile) {
+      monthCard.remove();
+      this.monthCardHost = null;
+      this.calendarHost = null;
+    }
 
     this.composer = new Composer(container, {
       tags: this.settings.composerTags,
@@ -90,8 +99,10 @@ export class JournalPage {
 
     this.shell.setTodayHandler(() => this.selectToday());
     this.shell.setDateHandler((key) => void this.selectDate(key));
-    await this.loadMonth();
-    this.renderCalendar();
+    if (Platform.isMobile) {
+      await this.loadMonth();
+      this.renderCalendar();
+    }
     await this.showSelectedDay();
   }
 
@@ -126,7 +137,7 @@ export class JournalPage {
   }
 
   private renderCalendar(): void {
-    if (!this.calendarHost || !this.composer) return;
+    if (!Platform.isMobile || !this.calendarHost || !this.composer) return;
     this.calendarHost.empty();
     const days = CalendarMonth.build(
       this.year,
@@ -277,7 +288,7 @@ export class JournalPage {
       this.shell.options.vault,
       this.settings.dailyFolder,
     );
-    this.renderCalendar();
+    if (Platform.isMobile) this.renderCalendar();
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
     await this.renderCheckboxes();
     await this.renderTimeBuoys();
@@ -290,10 +301,14 @@ export class JournalPage {
     this.monthIndex = today.getMonth();
     this.selectedDateKey = dateKey(today);
     this.updateMonthTitle();
-    void this.loadMonth().then(() => {
-      this.renderCalendar();
-      return this.showSelectedDay();
-    });
+    if (Platform.isMobile) {
+      void this.loadMonth().then(() => {
+        this.renderCalendar();
+        return this.showSelectedDay();
+      });
+    } else {
+      void this.showSelectedDay();
+    }
   }
 
   private async selectDate(key: string): Promise<void> {
@@ -303,8 +318,10 @@ export class JournalPage {
     this.monthIndex = date.getMonth();
     this.selectedDateKey = key;
     this.updateMonthTitle();
-    await this.loadMonth();
-    this.renderCalendar();
+    if (Platform.isMobile) {
+      await this.loadMonth();
+      this.renderCalendar();
+    }
     await this.showSelectedDay();
   }
 
