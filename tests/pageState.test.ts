@@ -11,5 +11,7 @@ describe("page state", () => {
     expect(state.getPage()).toBe("search");
     state.setPage("stats");
     expect(state.getPage()).toBe("stats");
+    state.setPage("tags");
+    expect(state.getPage()).toBe("tags");
   });
 });

@@ -7,6 +7,7 @@ import type { LongformService } from "../services/LongformService";
 import type { RelationIndex } from "../services/RelationIndex";
 import type { StatsService } from "../services/StatsService";
 import type { TimeBuoyService } from "../services/TimeBuoyService";
+import type { VaultFolderService } from "../services/VaultFolderService";
 import { createPageState, type AppPage } from "./PageState";
 
 export interface AppShellServices {
@@ -16,6 +17,7 @@ export interface AppShellServices {
   stats: StatsService;
   relations: RelationIndex;
   timeBuoys: TimeBuoyService;
+  folders: VaultFolderService;
 }
 
 export interface AppShellOptions {
@@ -31,7 +33,8 @@ type PageRenderer = (container: HTMLElement, shell: AppShell) => void | Promise<
 const PAGES: Array<{ id: AppPage; label: string; icon: string }> = [
   { id: "journal", label: "日记", icon: "notebook-pen" },
   { id: "content", label: "内容", icon: "library-big" },
-  { id: "stats", label: "统计", icon: "chart-no-axes-column" },
+  { id: "tags", label: "标签", icon: "tags" },
+  { id: "stats", label: "资料库", icon: "database" },
   { id: "search", label: "搜索", icon: "search" },
 ];
 
@@ -46,6 +49,7 @@ export class AppShell {
   private unsubscribe: (() => void) | null = null;
   private todayHandler: (() => void) | null = null;
   private dateHandler: ((dateKey: string) => void) | null = null;
+  private tagHandler: ((tag: string) => void) | null = null;
 
   constructor(readonly options: AppShellOptions) {}
 
@@ -79,6 +83,8 @@ export class AppShell {
     const stats = sidebar.createDiv({ cls: "zss-sidebar-stats" });
     void this.populateSidebarStats(stats);
     this.renderNavigation(sidebar);
+    const tagIndex = sidebar.createDiv({ cls: "zss-sidebar-tags" });
+    void this.populateSidebarTags(tagIndex);
     const pageHost = body.createEl("main", { cls: "zss-page-host" });
 
     for (const page of PAGES) {
@@ -158,6 +164,11 @@ export class AppShell {
     this.dateHandler?.(dateKey);
   }
 
+  openTag(tag: string): void {
+    this.setPage("tags");
+    this.tagHandler?.(tag);
+  }
+
   dispose(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
@@ -170,6 +181,7 @@ export class AppShell {
     this.drawerBackdrop = null;
     this.todayHandler = null;
     this.dateHandler = null;
+    this.tagHandler = null;
   }
 
   setTodayHandler(handler: () => void): void {
@@ -178,6 +190,10 @@ export class AppShell {
 
   setDateHandler(handler: (dateKey: string) => void): void {
     this.dateHandler = handler;
+  }
+
+  setTagHandler(handler: (tag: string) => void): void {
+    this.tagHandler = handler;
   }
 
   invalidatePage(page: AppPage): void {
@@ -247,6 +263,32 @@ export class AppShell {
     noteValue.setText(String(noteCount));
     dayValue.setText(String(files.length));
     tagValue.setText(String(tags.size));
+  }
+
+  private async populateSidebarTags(container: HTMLElement): Promise<void> {
+    const entries = await this.options.services.stats.load();
+    const tags = [
+      ...entries
+        .flatMap((entry) => entry.tags)
+        .reduce((counts, tag) => {
+          counts.set(tag, (counts.get(tag) ?? 0) + 1);
+          return counts;
+        }, new Map<string, number>()),
+    ]
+      .map(([name, count]) => ({ name, count }))
+      .sort((first, second) => second.count - first.count)
+      .slice(0, 7);
+    if (!tags.length) return;
+    container.createDiv({ cls: "zss-sidebar-section-label", text: "常用标签" });
+    tags.forEach((tag) => {
+      const button = container.createEl("button", {
+        cls: "zss-sidebar-tag",
+        attr: { type: "button" },
+      });
+      button.createSpan({ text: `#${tag.name}` });
+      button.createSpan({ text: String(tag.count) });
+      button.addEventListener("click", () => this.openTag(tag.name));
+    });
   }
 
   private renderNavigation(container: HTMLElement): void {

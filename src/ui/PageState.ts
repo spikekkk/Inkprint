@@ -1,4 +1,4 @@
-export type AppPage = "journal" | "content" | "stats" | "search";
+export type AppPage = "journal" | "content" | "tags" | "stats" | "search";
 
 export interface PageState {
   getPage(): AppPage;

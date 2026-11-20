@@ -1,4 +1,4 @@
-import { normalizePath, Notice, TFolder } from "obsidian";
+import { normalizePath, Notice, Platform, TFolder } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
 import { createEntryId, createRandomSuffix } from "../domain/ids";
 import type { DailyEntry } from "../domain/types";
@@ -17,6 +17,7 @@ export class JournalPage {
   private selectedDateKey: string;
   private readonly entriesByDay = new Map<string, DailyEntry[]>();
   private calendarHost: HTMLElement | null = null;
+  private monthCardHost: HTMLElement | null = null;
   private timelineHost: HTMLElement | null = null;
   private checkboxHost: HTMLElement | null = null;
   private timeBuoyHost: HTMLElement | null = null;
@@ -46,6 +47,7 @@ export class JournalPage {
       cls: "zss-calendar-card",
       attr: { "aria-label": "日记日历" },
     });
+    this.monthCardHost = monthCard;
     const monthHead = monthCard.createDiv({ cls: "zss-calendar-head" });
     const previous = monthHead.createEl("button", {
       cls: "zss-icon-button",
@@ -138,9 +140,15 @@ export class JournalPage {
       for (const day of days.slice(index, index + 7)) {
         this.renderDay(week, day, today);
       }
-      if (days.slice(index, index + 7).some((day) => day.key === this.selectedDateKey)) {
+      if (
+        Platform.isMobile &&
+        days.slice(index, index + 7).some((day) => day.key === this.selectedDateKey)
+      ) {
         week.appendChild(this.composer.el);
       }
+    }
+    if (!Platform.isMobile && this.monthCardHost) {
+      this.monthCardHost.insertAdjacentElement("afterend", this.composer.el);
     }
   }
 
