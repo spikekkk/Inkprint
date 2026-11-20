@@ -754,24 +754,24 @@ button.zss-nav-item.is-active {
   font-size: 10px;
 }
 
-.zss-time-buoys {
+.zss-future-tasks {
   display: grid;
   gap: 7px;
 }
 
-.zss-time-buoy-head {
+.zss-future-task-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.zss-time-buoy-head span {
+.zss-future-task-head span {
   color: var(--zss-muted);
   font-size: 10px;
 }
 
-.zss-time-buoy-item {
+.zss-future-task-item {
   display: grid;
   gap: 5px;
   padding: 10px 12px;
@@ -780,18 +780,18 @@ button.zss-nav-item.is-active {
   background: var(--zss-soft);
 }
 
-.zss-time-buoy-item small {
+.zss-future-task-item small {
   color: var(--zss-accent);
   font-size: 10px;
 }
 
-.zss-time-buoy-item p {
+.zss-future-task-item p {
   margin: 0;
   line-height: var(--line-height-normal);
   white-space: pre-wrap;
 }
 
-.zss-time-buoy-item button {
+.zss-future-task-item button {
   justify-self: start;
   min-height: 28px;
   padding: 3px 7px;
@@ -801,6 +801,57 @@ button.zss-nav-item.is-active {
   color: var(--zss-muted);
   cursor: pointer;
   font-size: 10px;
+}
+
+.zss-task-results {
+  display: grid;
+  gap: 14px;
+}
+
+.zss-task-group {
+  display: grid;
+  gap: 5px;
+}
+
+.zss-task-row {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border: 1px solid var(--zss-border);
+  border-radius: var(--radius-m);
+  background: var(--zss-surface);
+}
+
+.zss-task-row input {
+  accent-color: var(--interactive-accent);
+}
+
+.zss-task-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.zss-task-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zss-task-copy small {
+  color: var(--zss-muted);
+  font-size: 9px;
+}
+
+.zss-task-date {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--zss-accent-soft);
+  color: var(--text-accent);
+  font-size: 9px;
 }
 
 .zss-timeline {

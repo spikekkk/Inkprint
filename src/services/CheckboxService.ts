@@ -4,6 +4,7 @@ export interface DailyCheckbox {
   lineIndex: number;
   checked: boolean;
   text: string;
+  dueDate?: string;
 }
 
 export interface CheckboxCandidate extends DailyCheckbox {
@@ -114,10 +115,12 @@ export function extractDailyCheckboxes(markdown: string): DailyCheckbox[] {
     if (fence !== null) return;
     const match = /^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$/.exec(line);
     if (!match) return;
+    const dueDate = /(?:^|\s)@(\d{4}-\d{2}-\d{2})(?:\s|$)/.exec(match[2])?.[1];
     checkboxes.push({
       lineIndex,
       checked: match[1].toLowerCase() === "x",
       text: match[2],
+      ...(dueDate ? { dueDate } : {}),
     });
   });
 

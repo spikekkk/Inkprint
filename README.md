@@ -4,17 +4,17 @@
 >
 > AI 写的是 AI 的，我写的才是我的。
 
-Inkprint 是一个移动端优先的 Obsidian 日记插件。它把日历、随手记录、Markdown checkbox、长文、统计和引用关系放在同一个主视图里，同时保持 Markdown 为标准数据源。
+Inkprint 是一个移动端优先的 Obsidian 日记插件。它把随手记录、Markdown checkbox、来日待办、标签、统计和 Vault 文件管理放在同一个主视图里，同时保持 Markdown 为标准数据源。
 
 ## 当前能力
 
 - 从日期下方直接写 Daily 记录。
 - 从已有 Daily Markdown 中手动导入 checkbox，并直接勾选回写。
 - 用 `@YYYY-MM-DD` 创建时光浮标，到指定日期重新浮现旧记录。
-- 从输入框创建独立长文，Daily 保留摘要与返回链接。
+- 从输入框创建独立长文，可选择任意目录，并自动套用该目录的 Template。
 - 从 Daily 反向索引长文引用，并在关联详情中集中展示上下文。
 - 按标签浏览所有相关记录。
-- 在资料库中浏览文件夹、检测 Template、重命名文件夹并新建 Markdown。
+- 在资料中心中浏览文件夹、检测 Template、重命名文件夹、新建或编辑 Markdown。
 - 桌面侧栏与手机抽屉共享同一套页面状态。
 - 使用 Obsidian 1.13+ 声明式插件设置 API。
 

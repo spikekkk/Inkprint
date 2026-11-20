@@ -1,7 +1,7 @@
 import { normalizePath, type Vault } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
 
-export interface TimeBuoyItem {
+export interface FutureTaskItem {
   sourceDate: string;
   entryId: string;
   createdAt: string;
@@ -9,23 +9,23 @@ export interface TimeBuoyItem {
   targetDate: string;
 }
 
-export class TimeBuoyService {
+export class FutureTaskService {
   constructor(
     private readonly vault: Vault,
     private readonly config: { dailyFolder: string },
   ) {}
 
-  async listForDate(targetDate: string): Promise<TimeBuoyItem[]> {
+  async listForDate(targetDate: string): Promise<FutureTaskItem[]> {
     const folder = normalizePath(this.config.dailyFolder);
     const files = this.vault
       .getFiles()
       .filter((file) => file.extension === "md" && file.path.startsWith(`${folder}/`));
-    const items: TimeBuoyItem[] = [];
+    const items: FutureTaskItem[] = [];
 
     for (const file of files) {
       const entries = parseDailyEntries(await this.vault.cachedRead(file));
       for (const entry of entries) {
-        if (!extractTimeBuoyDates(entry.body).includes(targetDate)) continue;
+        if (!extractFutureTaskDates(entry.body).includes(targetDate)) continue;
         items.push({
           sourceDate: file.basename,
           entryId: entry.entryId,
@@ -39,7 +39,7 @@ export class TimeBuoyService {
   }
 }
 
-export function extractTimeBuoyDates(text: string): string[] {
+export function extractFutureTaskDates(text: string): string[] {
   const dates = new Set<string>();
   for (const match of text.matchAll(/@(\d{4}-\d{2}-\d{2})\b/g)) {
     const date = match[1];

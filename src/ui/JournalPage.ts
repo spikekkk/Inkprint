@@ -9,7 +9,7 @@ import { CheckboxImportModal } from "./CheckboxImportModal";
 import { Composer } from "./Composer";
 import { LongformModal } from "./LongformModal";
 import { RelationPanel } from "./RelationPanel";
-import { TimeBuoyPickerModal } from "./TimeBuoyPickerModal";
+import { FutureTaskModal } from "./FutureTaskModal";
 
 export class JournalPage {
   private year: number;
@@ -20,7 +20,7 @@ export class JournalPage {
   private monthCardHost: HTMLElement | null = null;
   private timelineHost: HTMLElement | null = null;
   private checkboxHost: HTMLElement | null = null;
-  private timeBuoyHost: HTMLElement | null = null;
+  private futureTaskHost: HTMLElement | null = null;
   private monthTitle: HTMLElement | null = null;
   private composer: Composer | null = null;
   private readonly relationPanel: RelationPanel;
@@ -87,10 +87,10 @@ export class JournalPage {
       onCreateLongform: (body) => this.openLongformModal(body),
       onImportCheckboxes: () => void this.openCheckboxImport(),
       onInsertImage: (file) => this.insertImage(file),
-      onInsertTimeBuoy: () => this.openTimeBuoyPicker(),
+      onCreateFutureTask: () => this.openFutureTaskModal(),
     });
     this.checkboxHost = container.createDiv({ cls: "zss-checkbox-section" });
-    this.timeBuoyHost = container.createDiv({ cls: "zss-time-buoys" });
+    this.futureTaskHost = container.createDiv({ cls: "zss-future-tasks" });
     const timeline = container.createEl("section", {
       cls: "zss-timeline",
       attr: { "aria-label": "当天记录" },
@@ -218,7 +218,7 @@ export class JournalPage {
     );
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
     await this.renderCheckboxes();
-    await this.renderTimeBuoys();
+    await this.renderFutureTasks();
   }
 
   private renderTimeline(entries: DailyEntry[]): void {
@@ -291,7 +291,7 @@ export class JournalPage {
     if (Platform.isMobile) this.renderCalendar();
     this.renderTimeline(this.entriesByDay.get(this.selectedDateKey) ?? []);
     await this.renderCheckboxes();
-    await this.renderTimeBuoys();
+    await this.renderFutureTasks();
     new Notice("已收进今天的日记。");
   }
 
@@ -362,7 +362,7 @@ export class JournalPage {
       this.entriesByDay.delete(this.selectedDateKey);
       this.composer?.clear();
       await this.showSelectedDay();
-      this.shell.invalidatePage("content");
+      this.shell.invalidatePage("vault");
       new Notice("长文已创建，Daily 入口和引用已保留。");
       },
     ).open();
@@ -379,9 +379,9 @@ export class JournalPage {
     ).open();
   }
 
-  private openTimeBuoyPicker(): void {
-    new TimeBuoyPickerModal(this.shell.options.app, (date) => {
-      this.composer?.insertText(` @${date} `);
+  private openFutureTaskModal(): void {
+    new FutureTaskModal(this.shell.options.app, (task, date) => {
+      this.composer?.insertText(`- [ ] ${task} @${date}`);
     }).open();
   }
 
@@ -438,20 +438,20 @@ export class JournalPage {
     }
   }
 
-  private async renderTimeBuoys(): Promise<void> {
-    if (!this.timeBuoyHost) return;
-    this.timeBuoyHost.empty();
-    const items = await this.shell.options.services.timeBuoys.listForDate(
+  private async renderFutureTasks(): Promise<void> {
+    if (!this.futureTaskHost) return;
+    this.futureTaskHost.empty();
+    const items = await this.shell.options.services.futureTasks.listForDate(
       this.selectedDateKey,
     );
     if (!items.length) return;
 
-    const host = this.timeBuoyHost;
-    const header = host.createDiv({ cls: "zss-time-buoy-head" });
-    header.createEl("strong", { text: "此刻浮现" });
-    header.createSpan({ text: `${items.length} 条旧记录` });
+    const host = this.futureTaskHost;
+    const header = host.createDiv({ cls: "zss-future-task-head" });
+    header.createEl("strong", { text: "来日已至" });
+    header.createSpan({ text: `${items.length} 件` });
     items.forEach((item) => {
-      const row = host.createEl("article", { cls: "zss-time-buoy-item" });
+      const row = host.createEl("article", { cls: "zss-future-task-item" });
       row.createEl("small", {
         text: `${item.sourceDate} · ${
           item.createdAt.match(/T(\d{2}:\d{2})/)?.[1] ?? ""

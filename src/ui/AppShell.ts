@@ -6,7 +6,7 @@ import type { DailyNoteService } from "../services/DailyNoteService";
 import type { LongformService } from "../services/LongformService";
 import type { RelationIndex } from "../services/RelationIndex";
 import type { StatsService } from "../services/StatsService";
-import type { TimeBuoyService } from "../services/TimeBuoyService";
+import type { FutureTaskService } from "../services/FutureTaskService";
 import type { VaultFolderService } from "../services/VaultFolderService";
 import { createPageState, type AppPage } from "./PageState";
 
@@ -16,7 +16,7 @@ export interface AppShellServices {
   longform: LongformService;
   stats: StatsService;
   relations: RelationIndex;
-  timeBuoys: TimeBuoyService;
+  futureTasks: FutureTaskService;
   folders: VaultFolderService;
 }
 
@@ -31,11 +31,12 @@ export interface AppShellOptions {
 type PageRenderer = (container: HTMLElement, shell: AppShell) => void | Promise<void>;
 
 const PAGES: Array<{ id: AppPage; label: string; icon: string }> = [
-  { id: "journal", label: "日记", icon: "notebook-pen" },
-  { id: "content", label: "内容", icon: "library-big" },
-  { id: "tags", label: "标签", icon: "tags" },
-  { id: "stats", label: "资料库", icon: "database" },
-  { id: "search", label: "搜索", icon: "search" },
+  { id: "journal", label: "今日记录", icon: "notebook-pen" },
+  { id: "tags", label: "标签浏览", icon: "tags" },
+  { id: "tasks", label: "来日待办", icon: "list-todo" },
+  { id: "stats", label: "记录统计", icon: "chart-no-axes-column" },
+  { id: "vault", label: "资料中心", icon: "database" },
+  { id: "search", label: "全局搜索", icon: "search" },
 ];
 
 export class AppShell {

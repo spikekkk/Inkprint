@@ -6,7 +6,7 @@ export interface ComposerOptions {
   onCreateLongform(body: string): void;
   onImportCheckboxes(): void;
   onInsertImage(file: File): Promise<string>;
-  onInsertTimeBuoy(): void;
+  onCreateFutureTask(): void;
 }
 
 export class Composer {
@@ -52,8 +52,8 @@ export class Composer {
     this.toolbarButtons = [
       this.createTool(tools, "hash", "插入标签", () => this.insertText("#")),
       this.createTool(tools, "image", "插入图片", () => this.chooseImage()),
-      this.createTool(tools, "calendar-clock", "添加时光浮标", () =>
-        this.options.onInsertTimeBuoy(),
+      this.createTool(tools, "calendar-clock", "添加来日待办", () =>
+        this.options.onCreateFutureTask(),
       ),
       this.createTool(tools, "list-todo", "导入原来的 Checkbox", () =>
         this.options.onImportCheckboxes(),
