@@ -1183,6 +1183,26 @@ button.zss-nav-item.is-active {
   background: var(--background-modifier-hover);
 }
 
+.zss-folder-row[data-depth="1"] {
+  margin-left: 14px;
+}
+
+.zss-folder-row[data-depth="2"] {
+  margin-left: 28px;
+}
+
+.zss-folder-row[data-depth="3"] {
+  margin-left: 42px;
+}
+
+.zss-folder-row[data-depth="4"] {
+  margin-left: 56px;
+}
+
+.zss-folder-row[data-depth="5"] {
+  margin-left: 70px;
+}
+
 .zss-folder-main {
   min-width: 0;
   flex: 1;
