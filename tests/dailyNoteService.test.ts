@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Vault } from "obsidian";
 import { DailyNoteService } from "../src/services/DailyNoteService";
+import { serializeDailyEntry } from "../src/domain/dailyEntry";
 
 describe("DailyNoteService", () => {
   it("creates the Daily note and appends an atomic entry", async () => {
@@ -51,5 +52,41 @@ describe("DailyNoteService", () => {
         tags: [],
       }),
     ).rejects.toThrow("empty");
+  });
+
+  it("updates an existing entry in place while preserving its block id", async () => {
+    const markdown = serializeDailyEntry({
+      entryId: "entry-20261121-101500-a1b2",
+      createdAt: "2026-11-21T10:15:00+08:00",
+      body: "旧内容",
+      tags: ["旧标签"],
+    });
+    const file = { path: "Daily/2026-11-21.md" };
+    const process = vi.fn(async (_file, update: (value: string) => string) => update(markdown));
+    const vault = {
+      getFileByPath: vi.fn(() => file),
+      process,
+    } as unknown as Vault;
+    const service = new DailyNoteService(vault, {
+      dailyFolder: "Daily",
+      dailyHeading: "## 记录",
+    });
+
+    const entry = await service.update(
+      "2026-11-21",
+      "entry-20261121-101500-a1b2",
+      "更新后的内容 #新标签",
+    );
+
+    expect(process).toHaveBeenCalledWith(file, expect.any(Function));
+    expect(entry).toEqual(
+      expect.objectContaining({
+        entryId: "entry-20261121-101500-a1b2",
+        createdAt: "2026-11-21T10:15:00+08:00",
+        editedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/),
+        body: "更新后的内容 #新标签",
+        tags: ["新标签"],
+      }),
+    );
   });
 });

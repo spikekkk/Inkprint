@@ -7,9 +7,10 @@ import {
   type SettingDefinitionItem,
 } from "obsidian";
 import type { SettingsStore } from "../services/SettingsStore";
+import { setLanguage, t } from "../i18n";
 import {
-  DEFAULT_COMPOSER_TAGS,
   DEFAULT_SETTINGS,
+  defaultComposerTags,
   type InkprintSettings,
 } from "./defaults";
 
@@ -27,51 +28,18 @@ export class InkprintSettingTab extends PluginSettingTab {
     return [
       {
         type: "group",
-        items: [
-          this.folder("dailyFolder", "日记目录", "Daily Notes 使用的目录。"),
-          this.text("dailyHeading", "日记写入标题", "例如：## 记录"),
-          this.file("dailyTemplate", "日记模板", "Template/Daily.md，可为空。"),
-          this.folder("templatesFolder", "模板目录", "日记模板所在的目录。"),
-          this.folder("booksFolder", "书籍目录", "书籍索引文件的位置。"),
-          this.folder("longformFolder", "长文目录", "长文正文所在的目录。"),
-        ],
-      },
-      {
-        type: "group",
-        heading: "写作",
+        heading: t("settings.language"),
         items: [
           {
-            name: "保存后保留焦点",
-            desc: "保存一条记录后，继续在当前输入框里写。",
-            control: {
-              type: "toggle",
-              key: "keepFocusAfterSave",
-            },
-          },
-          {
-            name: "输入框快捷标签",
-            desc: `每行一个标签。留空时恢复默认三个标签：${DEFAULT_COMPOSER_TAGS.join("、")}。`,
-            control: {
-              type: "textarea",
-              key: "composerTags",
-              defaultValue: DEFAULT_COMPOSER_TAGS.join("\n"),
-            },
-          },
-        ],
-      },
-      {
-        type: "group",
-        heading: "日历",
-        items: [
-          {
-            name: "每周起始日",
-            desc: "日历按此设置排列。",
+            name: t("settings.language"),
+            desc: t("settings.languageDesc"),
             control: {
               type: "dropdown",
-              key: "weekStartsOn",
+              key: "language",
               options: {
-                monday: "周一",
-                sunday: "周日",
+                auto: t("settings.auto"),
+                zh: t("settings.zh"),
+                en: t("settings.en"),
               },
             },
           },
@@ -79,11 +47,82 @@ export class InkprintSettingTab extends PluginSettingTab {
       },
       {
         type: "group",
-        heading: "外观",
+        heading: t("settings.group.storage"),
+        items: [
+          this.folder("dailyFolder", t("settings.dailyFolder"), t("settings.dailyFolderDesc")),
+          this.text("dailyHeading", t("settings.dailyHeading"), t("settings.dailyHeadingDesc")),
+          this.file("dailyTemplate", t("settings.dailyTemplate"), t("settings.dailyTemplateDesc")),
+          this.folder(
+            "templatesFolder",
+            t("settings.templatesFolder"),
+            t("settings.templatesFolderDesc"),
+          ),
+          this.folder("booksFolder", t("settings.booksFolder"), t("settings.booksFolderDesc")),
+          this.folder(
+            "longformFolder",
+            t("settings.longformFolder"),
+            t("settings.longformFolderDesc"),
+          ),
+        ],
+      },
+      {
+        type: "group",
+        heading: t("settings.writing"),
         items: [
           {
-            name: "减少透明效果",
-            desc: "移动端导航、抽屉和关联详情使用实色背景。",
+            name: t("settings.recognizeLegacy"),
+            desc: t("settings.recognizeLegacyDesc"),
+            control: {
+              type: "toggle",
+              key: "recognizeLegacyEntries",
+            },
+          },
+          {
+            name: t("settings.keepFocus"),
+            desc: t("settings.keepFocusDesc"),
+            control: {
+              type: "toggle",
+              key: "keepFocusAfterSave",
+            },
+          },
+          {
+            name: t("settings.composerTags"),
+            desc: t("settings.composerTagsDesc", {
+              tags: defaultComposerTags().join("、"),
+            }),
+            control: {
+              type: "textarea",
+              key: "composerTags",
+              defaultValue: defaultComposerTags().join("\n"),
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: t("settings.calendar"),
+        items: [
+          {
+            name: t("settings.weekStart"),
+            desc: t("settings.weekStartDesc"),
+            control: {
+              type: "dropdown",
+              key: "weekStartsOn",
+              options: {
+                monday: t("settings.monday"),
+                sunday: t("settings.sunday"),
+              },
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: t("settings.appearance"),
+        items: [
+          {
+            name: t("settings.reduceTransparency"),
+            desc: t("settings.reduceTransparencyDesc"),
             control: {
               type: "toggle",
               key: "reduceTransparency",
@@ -93,14 +132,14 @@ export class InkprintSettingTab extends PluginSettingTab {
       },
       {
         type: "group",
-        heading: "高级",
+        heading: t("settings.advanced"),
         items: [
           {
-            name: "重新载入视图",
-            desc: "设置修改后可让已打开的 Inkprint 视图重新读取配置。",
+            name: t("settings.reloadView"),
+            desc: t("settings.reloadViewDesc"),
             action: () => {
               this.onSettingsChanged();
-              new Notice("Inkprint 视图已重新载入。");
+              new Notice(t("settings.reloaded"));
             },
           },
         ],
@@ -124,6 +163,7 @@ export class InkprintSettingTab extends PluginSettingTab {
             .filter(Boolean)
         : value;
     const next = { ...current, [key]: normalizedValue } as InkprintSettings;
+    if (key === "language") setLanguage(next.language);
     await this.store.save(next);
     this.onSettingsChanged();
     this.update();

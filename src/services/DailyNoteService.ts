@@ -1,6 +1,11 @@
 import { normalizePath, type Vault } from "obsidian";
-import { serializeDailyEntry } from "../domain/dailyEntry";
+import {
+  parseDailyEntries,
+  replaceDailyEntry,
+  serializeDailyEntry,
+} from "../domain/dailyEntry";
 import type { DailyEntry, DailyEntryInput } from "../domain/types";
+import { t } from "../i18n";
 
 export interface DailyNoteConfig {
   dailyFolder: string;
@@ -40,6 +45,34 @@ export class DailyNoteService {
     return file ? this.vault.cachedRead(file) : "";
   }
 
+  async update(
+    dateKey: string,
+    entryId: string,
+    body: string,
+  ): Promise<DailyEntry> {
+    if (!body.trim()) {
+      throw new Error(t("error.emptyEntry"));
+    }
+    const filePath = normalizePath(`${this.config.dailyFolder}/${dateKey}.md`);
+    const file = this.vault.getFileByPath(filePath);
+    if (!file) throw new Error(t("error.dailyMissing"));
+    const tags = Array.from(body.matchAll(/#([^\s#]+)/g), (match) => match[1]);
+    const editedAt = localTimestamp(new Date());
+    let updated: DailyEntry | undefined;
+
+    await this.vault.process(file, (markdown) => {
+      const next = replaceDailyEntry(markdown, entryId, body, tags, editedAt);
+      updated = parseDailyEntries(next, {
+        dateKey,
+        includeLegacy: false,
+      }).find((entry) => entry.entryId === entryId);
+      return next;
+    });
+
+    if (!updated) throw new Error(t("error.entryReload"));
+    return updated;
+  }
+
   private async ensureFolder(path: string): Promise<void> {
     if (!path) return;
     const parts = path.split("/").filter(Boolean);
@@ -55,4 +88,15 @@ export class DailyNoteService {
       await this.vault.createFolder(current);
     }
   }
+}
+
+function localTimestamp(date: Date): string {
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const hours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
+  const minutes = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 19);
+  return `${local}${sign}${hours}:${minutes}`;
 }

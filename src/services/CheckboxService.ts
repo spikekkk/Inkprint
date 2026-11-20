@@ -1,4 +1,5 @@
 import { normalizePath, type TFile, type Vault } from "obsidian";
+import { t } from "../i18n";
 
 export interface DailyCheckbox {
   lineIndex: number;
@@ -45,7 +46,7 @@ export class CheckboxService {
     return candidates;
   }
 
-  async importToDay(dateKey: string, items: readonly DailyCheckbox[]): Promise<void> {
+  async appendToDay(dateKey: string, items: readonly DailyCheckbox[]): Promise<void> {
     if (!items.length) return;
     const file = await this.ensureFile(dateKey);
     const lines = items.map(
@@ -61,11 +62,11 @@ export class CheckboxService {
     checked: boolean,
   ): Promise<void> {
     const file = this.getFile(dateKey);
-    if (!file) throw new Error("当前日期的 Markdown 文件不存在。");
+    if (!file) throw new Error(t("error.checkboxFileMissing"));
     await this.vault.process(file, (markdown) => {
       const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
       const line = lines[lineIndex];
-      if (!line) throw new Error("Checkbox 已移动，请刷新后再试。");
+      if (!line) throw new Error(t("error.checkboxMoved"));
       lines[lineIndex] = line.replace(
         /^(\s*[-*+]\s+)\[([ xX])\]/,
         `$1[${checked ? "x" : " "}]`,

@@ -11,8 +11,10 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
+    "@lezer/common": "^1.5.6",
     "@types/node": "^22.15.0",
     "builtin-modules": "^5.0.0",
     "esbuild": "^0.28.0",

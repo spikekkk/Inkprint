@@ -45,7 +45,11 @@ export class RelationIndex {
     return this.sources.get(entryId);
   }
 
-  async rebuild(vault: Vault, dailyFolder: string): Promise<void> {
+  async rebuild(
+    vault: Vault,
+    dailyFolder: string,
+    recognizeLegacyEntries = true,
+  ): Promise<void> {
     const folder = normalizePath(dailyFolder);
     const files = vault
       .getFiles()
@@ -54,7 +58,10 @@ export class RelationIndex {
 
     for (const file of files) {
       const date = file.basename;
-      const entries = parseDailyEntries(await vault.cachedRead(file));
+      const entries = parseDailyEntries(await vault.cachedRead(file), {
+        dateKey: date,
+        includeLegacy: recognizeLegacyEntries,
+      });
       for (const entry of entries) {
         sources.push({
           day: date,

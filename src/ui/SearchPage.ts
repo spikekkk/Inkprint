@@ -1,5 +1,6 @@
 import { normalizePath, Notice, type App } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
+import { t } from "../i18n";
 import type { AppShell } from "./AppShell";
 
 interface SearchResult {
@@ -8,6 +9,7 @@ interface SearchResult {
   excerpt: string;
   searchable: string;
   blockId?: string;
+  legacy?: boolean;
 }
 
 export class SearchPage {
@@ -17,11 +19,11 @@ export class SearchPage {
     container.empty();
     const head = container.createDiv({ cls: "zss-page-heading" });
     const copy = head.createDiv();
-    copy.createEl("h1", { text: "搜索" });
-    copy.createSpan({ text: "搜索日记、长文和标签。" });
+    copy.createEl("h1", { text: t("search.title") });
+    copy.createSpan({ text: t("search.desc") });
     const global = head.createEl("button", {
       cls: "zss-text-button",
-      text: "打开 Obsidian 全局搜索",
+      text: t("search.global"),
       attr: { type: "button" },
     });
     global.addEventListener("click", () => {
@@ -29,7 +31,7 @@ export class SearchPage {
         commands: { executeCommandById(id: string): boolean };
       };
       if (!app.commands.executeCommandById("global-search:open")) {
-        new Notice("没有找到 Obsidian 全局搜索命令。");
+        new Notice(t("search.globalMissing"));
       }
     });
 
@@ -37,8 +39,8 @@ export class SearchPage {
     const input = field.createEl("input", {
       attr: {
         type: "search",
-        placeholder: "输入正文、书名或标签",
-        "aria-label": "搜索日记和长文",
+        placeholder: t("search.placeholder"),
+        "aria-label": t("search.aria"),
       },
     });
     const results = container.createDiv({ cls: "zss-search-results" });
@@ -50,7 +52,7 @@ export class SearchPage {
         .filter((source) => !query || source.searchable.includes(query))
         .slice(0, 40);
       if (!matches.length) {
-        results.createDiv({ cls: "zss-empty", text: "没有找到匹配记录。" });
+        results.createDiv({ cls: "zss-empty", text: t("empty.search") });
         return;
       }
       matches.forEach((result) => {
@@ -62,7 +64,9 @@ export class SearchPage {
         button.createEl("p", { text: result.excerpt });
         button.addEventListener("click", () => {
           void this.shell.options.app.workspace.openLinkText(
-            result.blockId ? `${result.path}#^${result.blockId}` : result.path,
+            result.blockId && !result.legacy
+              ? `${result.path}#^${result.blockId}`
+              : result.path,
             "",
             false,
           );
@@ -91,10 +95,14 @@ export class SearchPage {
     for (const file of files) {
       const markdown = await vault.cachedRead(file);
       if (file.path.startsWith(`${dailyFolder}/`)) {
-        for (const entry of parseDailyEntries(markdown)) {
+        for (const entry of parseDailyEntries(markdown, {
+          dateKey: file.basename,
+          includeLegacy: settings.recognizeLegacyEntries,
+        })) {
           results.push({
             path: file.path,
             blockId: entry.blockId,
+            legacy: entry.source === "legacy",
             title: `${file.basename} · ${entry.createdAt.match(/T(\d{2}:\d{2})/)?.[1] ?? ""}`,
             excerpt: entry.body.slice(0, 180),
             searchable: `${file.basename}\n${entry.body}\n${entry.tags.join(" ")}`.toLocaleLowerCase(
@@ -112,7 +120,7 @@ export class SearchPage {
           .trim();
         results.push({
           path: file.path,
-          title: `长文 · ${title}`,
+          title: t("search.longform", { title }),
           excerpt: body.slice(0, 180),
           searchable: `${title}\n${body}`.toLocaleLowerCase("zh-CN"),
         });

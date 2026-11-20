@@ -1,5 +1,7 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { addIcon, Plugin, WorkspaceLeaf } from "obsidian";
 import { VIEW_TYPE_INKPRINT } from "./constants";
+import { setLanguage, t } from "./i18n";
+import { INKPRINT_ICON } from "./icons";
 import { SettingsStore } from "./services/SettingsStore";
 import { InkprintSettingTab } from "./settings/InkprintSettingTab";
 import { InkprintView } from "./view/InkprintView";
@@ -8,21 +10,23 @@ export default class InkprintPlugin extends Plugin {
   private settingsStore!: SettingsStore;
 
   async onload(): Promise<void> {
+    addIcon("inkprint", INKPRINT_ICON);
     this.settingsStore = new SettingsStore(this);
     await this.settingsStore.load();
+    setLanguage(this.settingsStore.getCached()?.language ?? "auto");
 
     this.registerView(
       VIEW_TYPE_INKPRINT,
       (leaf: WorkspaceLeaf) => new InkprintView(leaf, this.settingsStore),
     );
 
-    this.addRibbonIcon("notebook-pen", "打开 Inkprint", () => {
+    this.addRibbonIcon("inkprint", t("ribbon.open"), () => {
       void this.activateView();
     });
 
     this.addCommand({
       id: "open-journal",
-      name: "打开日记",
+      name: t("command.openJournal"),
       callback: () => {
         void this.activateView();
       },

@@ -1,4 +1,5 @@
 import { normalizePath, type TFile, type Vault } from "obsidian";
+import { t } from "../i18n";
 
 export interface LongformInput {
   title: string;
@@ -106,7 +107,7 @@ function sanitizeFileName(title: string): string {
     .replace(/\s+/g, " ")
     .replace(/^[.\s-]+|[.\s-]+$/g, "")
     .slice(0, 96);
-  return sanitized || "未命名长文";
+  return sanitized || t("vault.unnamed");
 }
 
 function stripFrontmatter(markdown: string): string {

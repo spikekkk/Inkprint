@@ -1,3 +1,5 @@
+import { stripEntryTags } from "../domain/entryDisplay";
+import { t } from "../i18n";
 import type { StatsEntry } from "../services/StatsService";
 import { summarizeEntries } from "../services/StatsService";
 import type { AppShell } from "./AppShell";
@@ -20,18 +22,18 @@ export class TagPage {
 
     const head = container.createDiv({ cls: "zss-page-heading" });
     const copy = head.createDiv();
-    copy.createEl("h1", { text: "标签" });
-    copy.createSpan({ text: "标签就是内容入口，点击一个标签即可回看全部相关记录。" });
+    copy.createEl("h1", { text: t("tag.title") });
+    copy.createSpan({ text: t("tag.desc") });
 
     if (!summary.tags.length) {
-      container.createDiv({ cls: "zss-empty", text: "还没有标签。" });
+      container.createDiv({ cls: "zss-empty", text: t("tag.empty") });
       return;
     }
 
     this.listHost = container.createDiv({ cls: "zss-tag-index" });
     this.streamHost = container.createEl("section", {
       cls: "zss-tag-stream",
-      attr: { "aria-label": "标签记录" },
+      attr: { "aria-label": t("tag.records") },
     });
     this.shell.setTagHandler((tag) => {
       this.selectedTag = tag;
@@ -51,13 +53,10 @@ export class TagPage {
         attr: { type: "button" },
       });
       button.classList.toggle("is-active", tag.name === this.selectedTag);
-      button.createSpan({ text: `#${tag.name}` });
-      button.createSpan({ text: String(tag.count) });
-      button.addEventListener("click", () => {
-        this.selectedTag = tag.name;
-        this.renderTags(tags);
-        this.renderStream();
-      });
+      button.setAttribute("aria-pressed", String(tag.name === this.selectedTag));
+      button.createSpan({ cls: "zss-tag-index-name", text: `#${tag.name}` });
+      button.createSpan({ cls: "zss-tag-index-count", text: String(tag.count) });
+      button.addEventListener("click", () => this.shell.openTag(tag.name));
     });
   }
 
@@ -69,10 +68,12 @@ export class TagPage {
       .filter((entry) => this.selectedTag && entry.tags.includes(this.selectedTag))
       .sort((first, second) => second.date.localeCompare(first.date));
     const head = host.createDiv({ cls: "zss-section-title" });
-    head.createEl("strong", { text: this.selectedTag ? `#${this.selectedTag}` : "记录" });
-    head.createSpan({ text: `${matching.length} 条` });
+    head.createEl("strong", {
+      text: this.selectedTag ? `#${this.selectedTag}` : t("common.record"),
+    });
+    head.createSpan({ text: t("journal.recordCount", { count: matching.length }) });
     if (!matching.length) {
-      host.createDiv({ cls: "zss-empty", text: "没有匹配记录。" });
+      host.createDiv({ cls: "zss-empty", text: t("tag.noMatches") });
       return;
     }
     matching.forEach((entry) => {
@@ -80,11 +81,12 @@ export class TagPage {
       const meta = row.createDiv({ cls: "zss-tag-entry-meta" });
       meta.createEl("time", { text: entry.date });
       const open = meta.createEl("button", {
-        text: "打开当天",
+        text: t("common.openDay"),
         attr: { type: "button" },
       });
       open.addEventListener("click", () => this.shell.openDate(entry.date));
-      row.createEl("p", { text: entry.body });
+      const body = stripEntryTags(entry.body, entry.tags);
+      if (body) row.createEl("p", { text: body });
       const tags = row.createDiv({ cls: "zss-entry-tags" });
       entry.tags.forEach((tag) => tags.createSpan({ text: `#${tag}` }));
     });

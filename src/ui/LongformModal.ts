@@ -1,4 +1,5 @@
 import { Modal, Notice, type App } from "obsidian";
+import { t } from "../i18n";
 
 export class LongformModal extends Modal {
   private titleInput: HTMLInputElement | null = null;
@@ -18,26 +19,26 @@ export class LongformModal extends Modal {
 
   onOpen(): void {
     this.contentEl.empty();
-    this.contentEl.createEl("h2", { text: "创建长文" });
+    this.contentEl.createEl("h2", { text: t("longform.title") });
     this.contentEl.createEl("p", {
-      text: "正文会迁入独立 Markdown，今天的 Daily 只保留摘要和返回入口。",
+      text: t("longform.desc"),
     });
     this.titleInput = this.contentEl.createEl("input", {
       attr: {
         type: "text",
-        placeholder: "长文标题",
-        "aria-label": "长文标题",
+        placeholder: t("longform.titlePlaceholder"),
+        "aria-label": t("longform.titleLabel"),
       },
     });
     const folderLabel = this.contentEl.createEl("label", { cls: "zss-longform-folder" });
-    folderLabel.createSpan({ text: "保存到" });
+    folderLabel.createSpan({ text: t("longform.folder") });
     this.folderSelect = folderLabel.createEl("select", {
-      attr: { "aria-label": "长文保存目录" },
+      attr: { "aria-label": t("longform.folderAria") },
     });
     this.folders.forEach((folder) => {
       this.folderSelect?.createEl("option", {
         value: folder,
-        text: folder || "Vault 根目录",
+        text: folder || t("longform.root"),
       });
     });
     this.folderSelect.value = this.defaultFolder;
@@ -53,13 +54,13 @@ export class LongformModal extends Modal {
 
     const actions = this.contentEl.createDiv({ cls: "zss-form-actions" });
     const cancel = actions.createEl("button", {
-      text: "取消",
+      text: t("common.cancel"),
       attr: { type: "button" },
     });
     cancel.addEventListener("click", () => this.close());
     const create = actions.createEl("button", {
       cls: "mod-cta",
-      text: "创建长文并保留入口",
+      text: t("longform.create"),
       attr: { type: "button" },
     });
     create.addEventListener("click", () => void this.submit(create));
@@ -73,7 +74,7 @@ export class LongformModal extends Modal {
   private async submit(button: HTMLButtonElement): Promise<void> {
     const title = this.titleInput?.value.trim() ?? "";
     if (!title) {
-      new Notice("请先填写长文标题。");
+      new Notice(t("longform.needsTitle"));
       this.titleInput?.focus();
       return;
     }
@@ -82,7 +83,7 @@ export class LongformModal extends Modal {
       await this.onSubmit(title, this.folderSelect?.value ?? this.defaultFolder);
       this.close();
     } catch (error) {
-      new Notice(error instanceof Error ? error.message : "创建长文失败。");
+      new Notice(error instanceof Error ? error.message : t("longform.failed"));
       button.disabled = false;
     }
   }
@@ -91,7 +92,9 @@ export class LongformModal extends Modal {
     if (!this.templateHint || !this.folderSelect) return;
     const template = this.templatePathFor(this.folderSelect.value);
     this.templateHint.setText(
-      template ? `会套用模板：${template}` : "该目录没有 Template.md，将使用默认长文格式。",
+      template
+        ? t("longform.templateUses", { path: template })
+        : t("longform.noTemplate"),
     );
   }
 }

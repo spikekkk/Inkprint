@@ -11,9 +11,11 @@ describe("settings", () => {
       }),
     ).toMatchObject({
       dailyFolder: "Daily",
+      language: "auto",
       dailyHeading: "## 记录",
       weekStartsOn: "monday",
       keepFocusAfterSave: true,
+      recognizeLegacyEntries: true,
       composerTags: ["此刻的心情", "对明天说句话", "最想记录的瞬间"],
     });
   });
@@ -24,5 +26,13 @@ describe("settings", () => {
         composerTags: ["灵感", "#复盘", " 灵感 "],
       }).composerTags,
     ).toEqual(["灵感", "复盘"]);
+  });
+
+  it("uses English defaults when English is selected", () => {
+    expect(normalizeSettings({ language: "en" })).toMatchObject({
+      language: "en",
+      dailyHeading: "## Journal",
+      composerTags: ["How-I-feel", "Note-to-tomorrow", "Moment-to-remember"],
+    });
   });
 });

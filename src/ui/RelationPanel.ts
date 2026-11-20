@@ -1,6 +1,7 @@
 import type { RelationItem } from "../services/RelationIndex";
 import type { RelationTarget } from "../domain/types";
 import type { AppShell } from "./AppShell";
+import { t } from "../i18n";
 
 export interface EntryRelationDetails {
   title: string;
@@ -24,24 +25,29 @@ export class RelationPanel {
     backdrop.addEventListener("click", () => this.close());
     const panel = appRoot.createEl("aside", {
       cls: "zss-relation-panel",
-      attr: { "aria-label": "关联详情" },
+      attr: { "aria-label": t("relation.title") },
     });
     panel.createDiv({ cls: "zss-relation-grabber", attr: { "aria-hidden": "true" } });
     const head = panel.createDiv({ cls: "zss-relation-head" });
     const copy = head.createDiv();
-    copy.createEl("small", { text: "长文 · 关联详情" });
+    copy.createEl("small", { text: t("relation.longform") });
     copy.createEl("strong", { text: title });
-    copy.createSpan({ text: `被 ${items.length} 条记录引用` });
+    copy.createSpan({
+      text: t("relation.summary", { outgoing: 0, incoming: items.length }),
+    });
     const close = head.createEl("button", {
       cls: "zss-icon-button",
       text: "×",
-      attr: { type: "button", "aria-label": "关闭关联详情" },
+      attr: { type: "button", "aria-label": t("relation.close") },
     });
     close.addEventListener("click", () => this.close());
 
     const body = panel.createDiv({ cls: "zss-relation-body" });
     if (!items.length) {
-      body.createDiv({ cls: "zss-empty", text: "还没有其他记录引用这篇长文。" });
+      body.createDiv({
+        cls: "zss-empty",
+        text: t("relation.empty"),
+      });
     } else {
       items
         .slice()
@@ -53,9 +59,9 @@ export class RelationPanel {
               item.createdAt.match(/T(\d{2}:\d{2})/)?.[1] ?? ""
             }`,
           });
-          row.createEl("p", { text: item.text || "（仅包含图片或引用）" });
+          row.createEl("p", { text: item.text || t("relation.imageOnly") });
           const button = row.createEl("button", {
-            text: "回到那天",
+            text: t("common.backToDay"),
             attr: { type: "button" },
           });
           button.addEventListener("click", () => {
@@ -77,28 +83,31 @@ export class RelationPanel {
     const head = panel?.querySelector<HTMLElement>(".zss-relation-head");
     if (!body || !head) return;
     body.querySelector(".zss-empty")?.remove();
-    head.querySelector("small")?.setText("记录 · 关联详情");
+    head.querySelector("small")?.setText(t("relation.entry"));
     const headMeta = head.querySelector("span");
     if (headMeta) {
       headMeta.setText(
-        `引用 ${details.outgoing.length} 条 · 被 ${details.incoming.length} 条引用`,
+        t("relation.summary", {
+          outgoing: details.outgoing.length,
+          incoming: details.incoming.length,
+        }),
       );
     }
 
     const source = body.createEl("article", { cls: "zss-relation-item" });
     source.createEl("small", { text: details.subtitle });
-    source.createEl("p", { text: details.body || "（仅包含图片或引用）" });
+    source.createEl("p", { text: details.body || t("relation.imageOnly") });
     body.prepend(source);
 
     if (details.outgoing.length) {
       const heading = body.createDiv({ cls: "zss-section-title" });
-      heading.createEl("strong", { text: "这条记录引用了" });
+      heading.createEl("strong", { text: t("relation.outgoingTitle") });
       details.outgoing.forEach((target) => {
         const row = body.createEl("article", { cls: "zss-relation-item" });
-        row.createEl("small", { text: "出链" });
+        row.createEl("small", { text: t("relation.outgoing") });
         row.createEl("p", { text: `${target.path}#^${target.blockId}` });
         const button = row.createEl("button", {
-          text: "查看关联目标",
+          text: t("relation.openTarget"),
           attr: { type: "button" },
         });
         button.addEventListener("click", () => {

@@ -1,9 +1,11 @@
 export type EntryKind = "note" | "task" | "longform-ref" | "book";
 export type TaskEvent = "completed" | "reopened";
+export type EntrySource = "inkprint" | "legacy";
 
 export interface DailyEntryInput {
   entryId: string;
   createdAt: string;
+  editedAt?: string;
   body: string;
   tags: string[];
   kind?: EntryKind;
@@ -15,6 +17,7 @@ export interface DailyEntryInput {
 
 export interface DailyEntry extends DailyEntryInput {
   blockId: string;
+  source?: EntrySource;
 }
 
 export interface RelationTarget {

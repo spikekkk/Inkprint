@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { extractDailyCheckboxes } from "../src/services/CheckboxService";
+import { describe, expect, it, vi } from "vitest";
+import { TFile, type Vault } from "obsidian";
+import { CheckboxService, extractDailyCheckboxes } from "../src/services/CheckboxService";
 
 describe("CheckboxService", () => {
   it("extracts Markdown checkboxes with stable line positions", () => {
@@ -21,5 +22,26 @@ describe("CheckboxService", () => {
     expect(extractDailyCheckboxes(markdown)).toEqual([
       { lineIndex: 3, checked: false, text: "真任务" },
     ]);
+  });
+
+  it("appends a newly created task to the selected Daily note", async () => {
+    const file = Object.assign(new TFile(), { path: "Daily/2026-11-20.md" });
+    const vault = {
+      getFileByPath: vi.fn().mockReturnValue(file),
+      append: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Vault;
+    const service = new CheckboxService(vault, {
+      dailyFolder: "Daily",
+      dailyHeading: "# 待办",
+    });
+
+    await service.appendToDay("2026-11-20", [
+      { lineIndex: -1, checked: false, text: "读完《朝花夕拾》 @2026-11-26" },
+    ]);
+
+    expect(vault.append).toHaveBeenCalledWith(
+      file,
+      "\n# 待办\n\n- [ ] 读完《朝花夕拾》 @2026-11-26\n",
+    );
   });
 });

@@ -1,4 +1,7 @@
+import { getIntlLocale } from "../i18n";
+
 export interface InkprintSettings {
+  language: "auto" | "zh" | "en";
   dailyFolder: string;
   dailyHeading: string;
   dailyTemplate: string;
@@ -8,6 +11,7 @@ export interface InkprintSettings {
   weekStartsOn: "monday" | "sunday";
   keepFocusAfterSave: boolean;
   reduceTransparency: boolean;
+  recognizeLegacyEntries: boolean;
   composerTags: string[];
 }
 
@@ -17,9 +21,16 @@ export const DEFAULT_COMPOSER_TAGS = [
   "最想记录的瞬间",
 ];
 
+export function defaultComposerTags(forceEnglish = false): string[] {
+  return forceEnglish || getIntlLocale() === "en"
+    ? ["How-I-feel", "Note-to-tomorrow", "Moment-to-remember"]
+    : [...DEFAULT_COMPOSER_TAGS];
+}
+
 export const DEFAULT_SETTINGS: InkprintSettings = {
+  language: "auto",
   dailyFolder: "Daily",
-  dailyHeading: "## 记录",
+  dailyHeading: getIntlLocale() === "en" ? "## Journal" : "## 记录",
   dailyTemplate: "Template/Daily.md",
   booksFolder: "Books",
   longformFolder: "Longform",
@@ -27,7 +38,8 @@ export const DEFAULT_SETTINGS: InkprintSettings = {
   weekStartsOn: "monday",
   keepFocusAfterSave: true,
   reduceTransparency: false,
-  composerTags: [...DEFAULT_COMPOSER_TAGS],
+  recognizeLegacyEntries: true,
+  composerTags: defaultComposerTags(),
 };
 
 export function normalizeSettings(value: unknown): InkprintSettings {
@@ -36,12 +48,21 @@ export function normalizeSettings(value: unknown): InkprintSettings {
       ? (value as Partial<InkprintSettings>)
       : {};
 
+  const language =
+      source.language === "zh" || source.language === "en"
+        ? source.language
+        : "auto";
+  const useEnglish = language === "en" || (language === "auto" && getIntlLocale() === "en");
+
   return {
+    language,
     dailyFolder: nonEmptyString(source.dailyFolder, DEFAULT_SETTINGS.dailyFolder),
     dailyHeading:
       typeof source.dailyHeading === "string"
         ? source.dailyHeading
-        : DEFAULT_SETTINGS.dailyHeading,
+        : useEnglish
+          ? "## Journal"
+          : "## 记录",
     dailyTemplate:
       typeof source.dailyTemplate === "string"
         ? source.dailyTemplate
@@ -58,7 +79,11 @@ export function normalizeSettings(value: unknown): InkprintSettings {
       typeof source.reduceTransparency === "boolean"
         ? source.reduceTransparency
         : DEFAULT_SETTINGS.reduceTransparency,
-    composerTags: normalizeComposerTags(source.composerTags),
+    recognizeLegacyEntries:
+      typeof source.recognizeLegacyEntries === "boolean"
+        ? source.recognizeLegacyEntries
+        : DEFAULT_SETTINGS.recognizeLegacyEntries,
+    composerTags: normalizeComposerTags(source.composerTags, useEnglish),
   };
 }
 
@@ -66,11 +91,11 @@ function nonEmptyString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function normalizeComposerTags(value: unknown): string[] {
-  if (!Array.isArray(value)) return [...DEFAULT_COMPOSER_TAGS];
+function normalizeComposerTags(value: unknown, useEnglish = false): string[] {
+  if (!Array.isArray(value)) return defaultComposerTags(useEnglish);
   const tags = value
     .filter((tag): tag is string => typeof tag === "string")
     .map((tag) => tag.trim().replace(/^#+/, ""))
     .filter(Boolean);
-  return tags.length ? [...new Set(tags)] : [...DEFAULT_COMPOSER_TAGS];
+  return tags.length ? [...new Set(tags)] : defaultComposerTags(useEnglish);
 }

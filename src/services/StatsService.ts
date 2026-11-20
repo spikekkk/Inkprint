@@ -1,5 +1,6 @@
 import { normalizePath, type Vault } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
+import { getIntlLocale } from "../i18n";
 
 export type StatsPeriod = "week" | "month" | "year";
 
@@ -27,7 +28,7 @@ export interface StatsBar {
 export class StatsService {
   constructor(
     private readonly vault: Vault,
-    private readonly config: { dailyFolder: string },
+    private readonly config: { dailyFolder: string; recognizeLegacyEntries?: boolean },
   ) {}
 
   async load(): Promise<StatsEntry[]> {
@@ -40,7 +41,10 @@ export class StatsService {
     for (const file of files) {
       const date = file.basename;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-      for (const entry of parseDailyEntries(await this.vault.cachedRead(file))) {
+      for (const entry of parseDailyEntries(await this.vault.cachedRead(file), {
+        dateKey: date,
+        includeLegacy: this.config.recognizeLegacyEntries,
+      })) {
         entries.push({ date, body: entry.body, tags: entry.tags });
       }
     }
@@ -109,7 +113,9 @@ function createBuckets(period: StatsPeriod, anchor: Date): StatsBar[] {
       date.setDate(start.getDate() + index);
       return {
         key: isoDate(date),
-        label: "一二三四五六日"[index],
+        label: new Intl.DateTimeFormat(getIntlLocale(), { weekday: "narrow" }).format(
+          date,
+        ),
         count: 0,
         words: 0,
       };

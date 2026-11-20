@@ -5,6 +5,7 @@ import {
   type App,
   type TAbstractFile,
 } from "obsidian";
+import { t } from "../i18n";
 
 export interface FolderSummary {
   folder: TFolder;
@@ -34,7 +35,7 @@ export class VaultFolderService {
         return {
           folder,
           path: folder.path,
-          label: folder.isRoot() ? "Vault 根目录" : folder.name,
+          label: folder.isRoot() ? t("vault.root") : folder.name,
           depth: folder.path ? folder.path.split("/").length : 0,
           noteCount: directFiles.length,
           templatePath: template?.path ?? null,
@@ -49,21 +50,21 @@ export class VaultFolderService {
   }
 
   async renameFolder(folder: TFolder, nextName: string): Promise<string> {
-    if (folder.isRoot()) throw new Error("Vault 根目录不能重命名。");
+    if (folder.isRoot()) throw new Error(t("vault.renameRoot"));
     const name = nextName.trim().replace(/[\\/:*?"<>|]/g, "-");
-    if (!name) throw new Error("文件夹名称不能为空。");
+    if (!name) throw new Error(t("vault.renameEmpty"));
     const parent = folder.parent?.path ?? "";
     const nextPath = normalizePath(parent ? `${parent}/${name}` : name);
     if (nextPath === folder.path) return folder.path;
     if (this.app.vault.getAbstractFileByPath(nextPath)) {
-      throw new Error("同名文件夹或文件已存在。");
+      throw new Error(t("vault.nameExists"));
     }
     await this.app.fileManager.renameFile(folder as TAbstractFile, nextPath);
     return nextPath;
   }
 
   async createNote(folder: TFolder): Promise<TFile> {
-    const base = "未命名";
+    const base = t("vault.unnamed");
     let path = "";
     for (let index = 0; index < 1000; index += 1) {
       const name = index === 0 ? base : `${base} ${index}`;
@@ -71,12 +72,12 @@ export class VaultFolderService {
       if (!this.app.vault.getFileByPath(path)) break;
       path = "";
     }
-    if (!path) throw new Error("无法创建唯一文件名。");
+    if (!path) throw new Error(t("vault.uniqueNameFailed"));
     const template = this.listFolders().find((item) => item.path === folder.path)?.templatePath;
     const content = template
       ? (await this.app.vault.cachedRead(this.app.vault.getFileByPath(template)!))
           .replace(/\{\{date\}\}/g, new Date().toISOString().slice(0, 10))
-          .replace(/\{\{title\}\}/g, "未命名")
+          .replace(/\{\{title\}\}/g, t("vault.unnamed"))
       : "";
     return this.app.vault.create(path, content);
   }

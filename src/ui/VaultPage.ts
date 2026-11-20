@@ -1,7 +1,8 @@
-import { Notice, Platform, type TFile, type TFolder } from "obsidian";
+import { Notice, Platform, setIcon, TFolder, type TFile } from "obsidian";
 import type { FolderSummary } from "../services/VaultFolderService";
 import type { AppShell } from "./AppShell";
 import { FolderRenameModal } from "./FolderRenameModal";
+import { getIntlLocale, t } from "../i18n";
 
 export class VaultPage {
   private host: HTMLElement | null = null;
@@ -14,8 +15,9 @@ export class VaultPage {
     this.host = container;
     const head = container.createDiv({ cls: "zss-page-heading" });
     const copy = head.createDiv();
-    copy.createEl("h1", { text: "资料库" });
-    copy.createSpan({ text: "浏览整个 Vault 的文件夹、模板和文件。" });
+    copy.createEl("h1", { text: t("vault.title") });
+    copy.createSpan({ text: t("vault.desc") });
+    this.host = container.createDiv({ cls: "zss-vault-content" });
     this.renderFolders();
   }
 
@@ -26,88 +28,121 @@ export class VaultPage {
     if (!this.selectedFolderPath || !folders.some((item) => item.path === this.selectedFolderPath)) {
       this.selectedFolderPath = folders[0]?.path ?? null;
     }
-    const head = this.host.createDiv({ cls: "zss-section-title" });
-    head.createEl("strong", { text: "全部文件夹" });
-    head.createSpan({ text: `${folders.length} 个` });
-    const list = this.host.createDiv({ cls: "zss-folder-list" });
-    folders.forEach((summary) => this.renderFolderRow(list, summary));
+    const layout = this.host.createDiv({ cls: "zss-vault-layout" });
+    const tree = layout.createEl("aside", {
+      cls: "zss-vault-tree",
+      attr: { "aria-label": t("vault.folderAria") },
+    });
+    const treeHead = tree.createDiv({ cls: "zss-section-title" });
+    treeHead.createEl("strong", { text: t("vault.folder") });
+    treeHead.createSpan({ text: String(folders.length) });
+    folders.forEach((summary) => this.renderFolderRow(tree, summary));
+
     const selected = folders.find((item) => item.path === this.selectedFolderPath);
-    if (selected) this.renderFolderFiles(selected);
+    if (selected) this.renderFolderDetail(layout, selected);
   }
 
   private renderFolderRow(parent: HTMLElement, summary: FolderSummary): void {
-    const row = parent.createDiv({ cls: "zss-folder-row" });
+    const row = parent.createEl("button", {
+      cls: "zss-vault-folder-row",
+      attr: {
+        type: "button",
+        "aria-label": `${summary.label}, ${summary.noteCount}${
+          summary.templatePath ? ` · ${t("vault.template")}` : ""
+        }`,
+      },
+    });
     row.dataset.depth = String(summary.depth);
     row.classList.toggle("is-selected", summary.path === this.selectedFolderPath);
-    const main = row.createEl("button", {
-      cls: "zss-folder-main",
-      attr: { type: "button" },
-    });
-    main.createEl("strong", { text: summary.label });
-    main.createSpan({
-      text: `${summary.noteCount} 篇${summary.templatePath ? " · 有模板" : ""}`,
-    });
-    main.addEventListener("click", () => {
+    const icon = row.createSpan({ cls: "zss-vault-folder-icon" });
+    const hasChildFolders = summary.folder.children.some((child) => child instanceof TFolder);
+    setIcon(
+      icon,
+      summary.path === this.selectedFolderPath
+        ? "folder-open"
+        : hasChildFolders
+          ? "chevron-right"
+          : "folder",
+    );
+    const copy = row.createSpan({ cls: "zss-vault-folder-copy" });
+    copy.createEl("strong", { text: summary.label });
+    if (summary.templatePath) {
+      copy.createEl("small", { text: t("vault.template") });
+    }
+    row.createSpan({ cls: "zss-vault-folder-count", text: String(summary.noteCount) });
+    row.addEventListener("click", () => {
       this.selectedFolderPath = summary.path;
       this.renderFolders();
     });
+  }
 
-    if (summary.templatePath) {
-      const template = row.createEl("button", {
-        cls: "zss-template-badge",
-        text: "Template",
-        attr: { type: "button", "aria-label": "打开模板" },
-      });
-      template.addEventListener("click", async () => {
-        const file = this.shell.options.vault.getFileByPath(summary.templatePath!);
-        if (file) await this.openFile(file);
-      });
-    }
-
-    const add = row.createEl("button", {
-      cls: "zss-folder-action",
-      text: "+",
-      attr: { type: "button", "aria-label": `在 ${summary.label} 新建笔记` },
+  private renderFolderDetail(parent: HTMLElement, summary: FolderSummary): void {
+    const detail = parent.createEl("section", {
+      cls: "zss-vault-detail",
+      attr: { "aria-label": t("vault.folderContentAria", { name: summary.label }) },
+    });
+    const head = detail.createDiv({ cls: "zss-vault-detail-head" });
+    const copy = head.createDiv({ cls: "zss-vault-detail-title" });
+    copy.createEl("strong", { text: summary.label });
+    copy.createSpan({ text: summary.path || t("vault.root") });
+    const actions = head.createDiv({ cls: "zss-vault-actions" });
+    const add = actions.createEl("button", {
+      cls: "zss-primary-button",
+      text: t("vault.newNote"),
+      attr: { type: "button" },
     });
     add.addEventListener("click", () => void this.createNote(summary.folder));
-
     if (!summary.folder.isRoot()) {
-      const rename = row.createEl("button", {
-        cls: "zss-folder-action",
-        text: "✎",
-        attr: { type: "button", "aria-label": `重命名 ${summary.label}` },
+      const rename = actions.createEl("button", {
+        cls: "zss-text-button",
+        text: t("vault.rename"),
+        attr: { type: "button" },
       });
       rename.addEventListener("click", () => {
         new FolderRenameModal(this.shell.options.app, summary.folder.name, async (name) => {
           await this.shell.options.services.folders.renameFolder(summary.folder, name);
           this.renderFolders();
-          new Notice("文件夹已重命名。");
+          new Notice(t("vault.renamed"));
         }).open();
       });
     }
-  }
 
-  private renderFolderFiles(summary: FolderSummary): void {
-    if (!this.host) return;
-    const files = this.shell.options.services.folders.listNotes(summary.folder);
-    const section = this.host.createEl("section", { cls: "zss-folder-files" });
-    const head = section.createDiv({ cls: "zss-section-title" });
-    head.createEl("strong", { text: summary.path || "Vault 根目录" });
-    head.createSpan({ text: `${files.length} 篇 Markdown` });
-    if (!files.length) {
-      section.createDiv({ cls: "zss-empty", text: "这个文件夹里还没有 Markdown 文件。" });
-      return;
-    }
-    files.forEach((file) => {
-      const button = section.createEl("button", {
-        cls: "zss-folder-file",
+    if (summary.templatePath) {
+      const template = detail.createDiv({ cls: "zss-vault-template" });
+      template.createSpan({ text: t("vault.usesTemplate") });
+      const open = template.createEl("button", {
+        text: summary.templatePath,
         attr: { type: "button" },
       });
-      button.createSpan({ text: file.basename });
-      button.createSpan({
-        text: new Date(file.stat.mtime).toLocaleDateString("zh-CN"),
+      open.addEventListener("click", async () => {
+        const file = this.shell.options.vault.getFileByPath(summary.templatePath!);
+        if (file) await this.openFile(file);
       });
-      button.addEventListener("click", () => void this.openFile(file));
+    }
+
+    const files = this.shell.options.services.folders.listNotes(summary.folder);
+    const filesHead = detail.createDiv({ cls: "zss-section-title" });
+    filesHead.createEl("strong", { text: t("vault.markdown") });
+    filesHead.createSpan({ text: t("stats.count", { count: files.length }) });
+    if (!files.length) {
+      detail.createDiv({ cls: "zss-empty", text: t("vault.emptyFolder") });
+      return;
+    }
+    const grid = detail.createDiv({ cls: "zss-vault-file-grid" });
+    files.forEach((file) => {
+      const card = grid.createEl("button", {
+        cls: "zss-vault-file-card",
+        attr: { type: "button" },
+      });
+      card.createEl("strong", { text: file.basename });
+      card.createSpan({
+        text: t("vault.updated", {
+          date: new Date(file.stat.mtime).toLocaleDateString(
+            getIntlLocale(),
+          ),
+        }),
+      });
+      card.addEventListener("click", () => void this.openFile(file));
     });
   }
 
@@ -117,7 +152,7 @@ export class VaultPage {
       await this.openFile(file);
       this.renderFolders();
     } catch (error) {
-      new Notice(error instanceof Error ? error.message : "新建文件失败。");
+      new Notice(error instanceof Error ? error.message : t("sidebar.pageError"));
     }
   }
 

@@ -1,4 +1,5 @@
 import { Modal, Notice, type App } from "obsidian";
+import { t } from "../i18n";
 
 export class FolderRenameModal extends Modal {
   private input: HTMLInputElement | null = null;
@@ -13,20 +14,20 @@ export class FolderRenameModal extends Modal {
 
   onOpen(): void {
     this.contentEl.empty();
-    this.contentEl.createEl("h2", { text: "重命名文件夹" });
+    this.contentEl.createEl("h2", { text: t("vault.renameTitle") });
     this.input = this.contentEl.createEl("input", {
-      attr: { type: "text", "aria-label": "新文件夹名称" },
+      attr: { type: "text", "aria-label": t("vault.newFolderName") },
     });
     this.input.value = this.currentName;
     const actions = this.contentEl.createDiv({ cls: "zss-form-actions" });
     const cancel = actions.createEl("button", {
-      text: "取消",
+      text: t("common.cancel"),
       attr: { type: "button" },
     });
     cancel.addEventListener("click", () => this.close());
     const save = actions.createEl("button", {
       cls: "mod-cta",
-      text: "保存",
+      text: t("common.save"),
       attr: { type: "button" },
     });
     save.addEventListener("click", () => void this.submit(save));
@@ -40,7 +41,7 @@ export class FolderRenameModal extends Modal {
   private async submit(button: HTMLButtonElement): Promise<void> {
     const name = this.input?.value.trim() ?? "";
     if (!name) {
-      new Notice("文件夹名称不能为空。");
+      new Notice(t("vault.renameEmpty"));
       return;
     }
     button.disabled = true;
@@ -48,7 +49,7 @@ export class FolderRenameModal extends Modal {
       await this.onSubmit(name);
       this.close();
     } catch (error) {
-      new Notice(error instanceof Error ? error.message : "重命名失败。");
+      new Notice(error instanceof Error ? error.message : t("vault.renameFailed"));
       button.disabled = false;
     }
   }

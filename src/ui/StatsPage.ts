@@ -6,6 +6,7 @@ import {
 } from "../services/StatsService";
 import type { AppShell } from "./AppShell";
 import { dateKey } from "./CalendarMonth";
+import { getIntlLocale, t } from "../i18n";
 
 export class StatsPage {
   private entries: StatsEntry[] = [];
@@ -22,22 +23,22 @@ export class StatsPage {
     const summary = summarizeEntries(this.entries);
     const head = container.createDiv({ cls: "zss-page-heading" });
     const copy = head.createDiv();
-    copy.createEl("h1", { text: "统计" });
-    copy.createSpan({ text: "记录统计完全来自 Daily Markdown。" });
+    copy.createEl("h1", { text: t("stats.title") });
+    copy.createSpan({ text: t("stats.desc") });
     const metrics = container.createDiv({ cls: "zss-stats-metrics" });
-    this.metric(metrics, summary.noteCount, "全部笔记");
-    this.metric(metrics, summary.wordCount, "全部字数");
-    this.metric(metrics, summary.dayCount, "记录天数");
+    this.metric(metrics, summary.noteCount, t("stats.allNotes"));
+    this.metric(metrics, summary.wordCount, t("stats.allWords"));
+    this.metric(metrics, summary.dayCount, t("stats.activeDays"));
 
     const segmented = container.createDiv({
       cls: "zss-segmented",
-      attr: { role: "tablist", "aria-label": "统计范围" },
+      attr: { role: "tablist", "aria-label": t("stats.title") },
     });
     (
       [
-        ["week", "周"],
-        ["month", "月"],
-        ["year", "年"],
+        ["week", t("stats.week")],
+        ["month", t("stats.month")],
+        ["year", t("stats.year")],
       ] as Array<[StatsPeriod, string]>
     ).forEach(([value, label]) => {
       const button = segmented.createEl("button", {
@@ -63,7 +64,7 @@ export class StatsPage {
 
   private metric(parent: HTMLElement, value: number, label: string): void {
     const card = parent.createDiv({ cls: "zss-stat-card" });
-    card.createEl("strong", { text: value.toLocaleString("zh-CN") });
+    card.createEl("strong", { text: value.toLocaleString(getIntlLocale()) });
     card.createSpan({ text: label });
   }
 
@@ -76,22 +77,28 @@ export class StatsPage {
     head.createEl("strong", {
       text:
         this.period === "year"
-          ? `${this.anchorDate.slice(0, 4)} 年`
+          ? t("stats.yearTitle", { year: this.anchorDate.slice(0, 4) })
           : this.period === "week"
-            ? "本周记录"
-            : `${Number(this.anchorDate.slice(5, 7))} 月`,
+            ? t("stats.weekTitle")
+            : new Intl.DateTimeFormat(getIntlLocale(), { month: "long" }).format(
+                new Date(`${this.anchorDate}T12:00:00`),
+              ),
     });
-    head.createSpan({ text: `${bars.reduce((sum, bar) => sum + bar.count, 0)} 条` });
+    head.createSpan({
+      text: t("stats.count", {
+        count: bars.reduce((sum, bar) => sum + bar.count, 0),
+      }),
+    });
     const chart = this.chartHost.createDiv({
       cls: "zss-bar-chart",
-      attr: { role: "img", "aria-label": "记录数量趋势" },
+      attr: { role: "img", "aria-label": t("stats.chartAria") },
     });
     bars.forEach((bar) => {
       const column = chart.createDiv({ cls: "zss-bar-column" });
-      column.setAttribute("aria-label", `${bar.label}：${bar.count} 条记录`);
+      column.setAttribute("aria-label", `${bar.label}: ${bar.count}`);
       const track = column.createDiv({ cls: "zss-bar-track" });
       const fill = track.createDiv({ cls: "zss-bar-fill" });
-      fill.style.height = `${Math.max(bar.count ? 10 : 2, (bar.count / max) * 100)}%`;
+      fill.style.height = bar.count ? `${Math.max(10, (bar.count / max) * 100)}%` : "0";
       column.createSpan({ cls: "zss-bar-label", text: bar.label });
     });
   }
@@ -100,23 +107,23 @@ export class StatsPage {
     if (!this.summaryHost) return;
     this.summaryHost.empty();
     const title = this.summaryHost.createDiv({ cls: "zss-section-title" });
-    title.createEl("strong", { text: "概览" });
+    title.createEl("strong", { text: t("stats.overview") });
     const grid = this.summaryHost.createDiv({ cls: "zss-stats-grid" });
-    this.metric(grid, summary.tagCount, "标签");
+    this.metric(grid, summary.tagCount, t("stats.tagCount"));
     this.metric(
       grid,
       summary.noteCount ? Math.round(summary.wordCount / summary.noteCount) : 0,
-      "平均每条字数",
+      t("stats.avgWords"),
     );
     this.metric(
       grid,
       summary.dayCount ? Math.round(summary.noteCount / summary.dayCount) : 0,
-      "单日最多",
+      t("stats.maxPerDay"),
     );
     const tags = this.summaryHost.createDiv({ cls: "zss-stats-tags" });
-    tags.createEl("strong", { text: "常用标签" });
+    tags.createEl("strong", { text: t("stats.tags") });
     if (!summary.tags.length) {
-      tags.createDiv({ cls: "zss-empty", text: "还没有标签。" });
+      tags.createDiv({ cls: "zss-empty", text: t("empty.tags") });
       return;
     }
     summary.tags.slice(0, 12).forEach((tag) => {

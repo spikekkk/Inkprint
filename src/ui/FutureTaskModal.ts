@@ -1,74 +1,147 @@
-import { Modal, Notice, type App } from "obsidian";
+import { Modal, type App } from "obsidian";
+import { getIntlLocale, t } from "../i18n";
+import { dateKey } from "./CalendarMonth";
 
 export class FutureTaskModal extends Modal {
+  private visibleMonth: Date;
+  private readonly today = startOfDay(new Date());
   private taskInput: HTMLInputElement | null = null;
-  private dateInput: HTMLInputElement | null = null;
 
   constructor(
     app: App,
-    private readonly onPick: (task: string, date: string) => void,
+    private readonly onSelect: (date: string, task: string) => void,
   ) {
     super(app);
+    this.visibleMonth = new Date(this.today.getFullYear(), this.today.getMonth(), 1);
   }
 
   onOpen(): void {
+    this.modalEl.addClass("inkprint-future-task-modal");
     this.contentEl.empty();
-    this.contentEl.createEl("h2", { text: "安排一件来日" });
+    this.contentEl.createEl("h2", { text: t("futureTask.title") });
     this.contentEl.createEl("p", {
-      text: "这件事会保存为标准 Markdown Checkbox，并在指定日期重新浮现。",
+      cls: "zss-picker-intro",
+      text: t("futureTask.desc"),
     });
-    this.taskInput = this.contentEl.createEl("input", {
-      attr: { type: "text", placeholder: "要留给来日的事情", "aria-label": "待办内容" },
-    });
-    this.dateInput = this.contentEl.createEl("input", {
+
+    const taskField = this.contentEl.createEl("label", { cls: "zss-future-task-field" });
+    taskField.createSpan({ text: t("futureTask.content") });
+    this.taskInput = taskField.createEl("input", {
       attr: {
-        type: "date",
-        "aria-label": "浮标日期",
+        type: "text",
+        placeholder: t("futureTask.placeholder"),
+        "aria-label": t("futureTask.title"),
       },
     });
-    const defaultDate = new Date();
-    defaultDate.setDate(defaultDate.getDate() + 7);
-    this.dateInput.value = isoDate(defaultDate);
 
-    const actions = this.contentEl.createDiv({ cls: "zss-form-actions" });
-    const cancel = actions.createEl("button", {
-      text: "取消",
-      attr: { type: "button" },
+    const shortcuts = this.contentEl.createDiv({ cls: "zss-future-task-shortcuts" });
+    ([
+      [t("common.today"), 0],
+      [t("tasks.tomorrow"), 1],
+      [t("futureTask.add7"), 7],
+      [t("futureTask.add30"), 30],
+    ] as Array<[string, number]>).forEach(([label, offset]) => {
+      const button = shortcuts.createEl("button", {
+        text: String(label),
+        attr: { type: "button" },
+      });
+      button.addEventListener("click", () => this.choose(addDays(offset)));
     });
-    cancel.addEventListener("click", () => this.close());
-    const insert = actions.createEl("button", {
-      cls: "mod-cta",
-      text: "插入浮标",
-      attr: { type: "button" },
-    });
-    insert.addEventListener("click", () => {
-      const date = this.dateInput?.value ?? "";
-      const task = this.taskInput?.value.trim() ?? "";
-      if (!task) {
-        new Notice("请填写待办内容。");
-        this.taskInput?.focus();
-        return;
-      }
-      if (!date) {
-        new Notice("请选择来日日期。");
-        this.dateInput?.focus();
-        return;
-      }
-      this.onPick(task, date);
-      this.close();
-    });
-    this.taskInput.focus();
+
+    this.contentEl.createDiv({ cls: "zss-future-task-calendar-host" });
+    this.renderCalendar();
+    window.setTimeout(() => this.taskInput?.focus(), 0);
   }
 
-  onClose(): void {
-    this.contentEl.empty();
+  private renderCalendar(): void {
+    const host = this.contentEl.querySelector<HTMLElement>(
+      ".zss-future-task-calendar-host",
+    );
+    if (!host) return;
+    host.empty();
+
+    const monthHead = host.createDiv({ cls: "zss-future-task-month-head" });
+    const previous = monthHead.createEl("button", {
+      attr: { type: "button", "aria-label": t("futureTask.previousMonth") },
+      text: "‹",
+    });
+    previous.addEventListener("click", () => this.changeMonth(-1));
+    monthHead.createEl("strong", {
+      text: new Intl.DateTimeFormat(getIntlLocale(), {
+        year: "numeric",
+        month: "long",
+      }).format(this.visibleMonth),
+    });
+    const next = monthHead.createEl("button", {
+      attr: { type: "button", "aria-label": t("futureTask.nextMonth") },
+      text: "›",
+    });
+    next.addEventListener("click", () => this.changeMonth(1));
+
+    const grid = host.createDiv({ cls: "zss-future-task-calendar" });
+    const formatter = new Intl.DateTimeFormat(getIntlLocale(), { weekday: "narrow" });
+    Array.from({ length: 7 }, (_, index) => {
+      const monday = new Date(2024, 0, 1 + index, 12);
+      return formatter.format(monday);
+    }).forEach((label) => {
+      grid.createSpan({ cls: "zss-future-task-weekday", text: label });
+    });
+
+    const first = new Date(
+      this.visibleMonth.getFullYear(),
+      this.visibleMonth.getMonth(),
+      1,
+    );
+    const offset = (first.getDay() + 6) % 7;
+    const gridStart = addDaysTo(first, -offset);
+    for (let index = 0; index < 42; index += 1) {
+      const date = addDaysTo(gridStart, index);
+      const button = grid.createEl("button", {
+        cls: "zss-future-task-day",
+        text: String(date.getDate()),
+        attr: {
+          type: "button",
+          "aria-label": dateKey(date),
+        },
+      });
+      button.toggleAttribute("data-outside", date.getMonth() !== this.visibleMonth.getMonth());
+      button.toggleAttribute("data-today", sameDay(date, this.today));
+      button.disabled = date < this.today;
+      button.addEventListener("click", () => this.choose(date));
+    }
+  }
+
+  private changeMonth(delta: number): void {
+    this.visibleMonth = new Date(
+      this.visibleMonth.getFullYear(),
+      this.visibleMonth.getMonth() + delta,
+      1,
+    );
+    this.renderCalendar();
+  }
+
+  private choose(date: Date): void {
+    this.onSelect(dateKey(date), this.taskInput?.value.trim() ?? "");
+    this.close();
   }
 }
 
-function isoDate(date: Date): string {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(days: number): Date {
+  const date = startOfDay(new Date());
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function addDaysTo(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function sameDay(first: Date, second: Date): boolean {
+  return dateKey(first) === dateKey(second);
 }

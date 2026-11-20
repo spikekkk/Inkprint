@@ -1,5 +1,6 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { VIEW_TYPE_INKPRINT } from "../constants";
+import { setLanguage } from "../i18n";
 import type { SettingsStore } from "../services/SettingsStore";
 import { CheckboxService } from "../services/CheckboxService";
 import { DailyNoteService } from "../services/DailyNoteService";
@@ -20,6 +21,7 @@ export { VIEW_TYPE_INKPRINT } from "../constants";
 
 export class InkprintView extends ItemView {
   private shell: AppShell | null = null;
+  private journal: JournalPage | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -37,14 +39,17 @@ export class InkprintView extends ItemView {
   }
 
   getIcon(): string {
-    return "notebook-pen";
+    return "inkprint";
   }
 
   async onOpen(): Promise<void> {
+    this.journal?.dispose();
+    this.journal = null;
     this.shell?.dispose();
     this.shell = null;
     this.contentEl.empty();
     const settings = await this.settingsStore.load();
+    setLanguage(settings.language);
     const daily = new DailyNoteService(this.app.vault, settings);
     this.shell = new AppShell({
       app: this.app,
@@ -64,6 +69,7 @@ export class InkprintView extends ItemView {
       },
     });
     const journal = new JournalPage(this.shell, settings);
+    this.journal = journal;
     const search = new SearchPage(this.shell);
     const stats = new StatsPage(this.shell);
     const tags = new TagPage(this.shell);
@@ -79,6 +85,8 @@ export class InkprintView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.journal?.dispose();
+    this.journal = null;
     this.shell?.dispose();
     this.shell = null;
   }

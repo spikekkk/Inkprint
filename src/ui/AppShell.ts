@@ -1,6 +1,7 @@
 import { normalizePath, setIcon, type App, type Vault } from "obsidian";
 import { parseDailyEntries } from "../domain/dailyEntry";
 import type { InkprintSettings } from "../settings/defaults";
+import { t, type TranslationKey } from "../i18n";
 import type { CheckboxService } from "../services/CheckboxService";
 import type { DailyNoteService } from "../services/DailyNoteService";
 import type { LongformService } from "../services/LongformService";
@@ -9,6 +10,7 @@ import type { StatsService } from "../services/StatsService";
 import type { FutureTaskService } from "../services/FutureTaskService";
 import type { VaultFolderService } from "../services/VaultFolderService";
 import { createPageState, type AppPage } from "./PageState";
+import { TrashModal } from "./TrashModal";
 
 export interface AppShellServices {
   daily: DailyNoteService;
@@ -30,13 +32,13 @@ export interface AppShellOptions {
 
 type PageRenderer = (container: HTMLElement, shell: AppShell) => void | Promise<void>;
 
-const PAGES: Array<{ id: AppPage; label: string; icon: string }> = [
-  { id: "journal", label: "今日记录", icon: "notebook-pen" },
-  { id: "tags", label: "标签浏览", icon: "tags" },
-  { id: "tasks", label: "来日待办", icon: "list-todo" },
-  { id: "stats", label: "记录统计", icon: "chart-no-axes-column" },
-  { id: "vault", label: "资料中心", icon: "database" },
-  { id: "search", label: "全局搜索", icon: "search" },
+const PAGES: Array<{ id: AppPage; labelKey: TranslationKey; icon: string }> = [
+  { id: "journal", labelKey: "nav.journal", icon: "notebook-pen" },
+  { id: "tags", labelKey: "nav.tags", icon: "tags" },
+  { id: "tasks", labelKey: "nav.tasks", icon: "list-todo" },
+  { id: "stats", labelKey: "nav.stats", icon: "chart-no-axes-column" },
+  { id: "vault", labelKey: "nav.vault", icon: "folder-tree" },
+  { id: "search", labelKey: "nav.search", icon: "search" },
 ];
 
 export class AppShell {
@@ -51,6 +53,7 @@ export class AppShell {
   private todayHandler: (() => void) | null = null;
   private dateHandler: ((dateKey: string) => void) | null = null;
   private tagHandler: ((tag: string) => void) | null = null;
+  private sidebarExpandButton: HTMLButtonElement | null = null;
 
   constructor(readonly options: AppShellOptions) {}
 
@@ -69,24 +72,37 @@ export class AppShell {
     const header = root.createEl("header", { cls: "zss-mobile-header" });
     const menuButton = header.createEl("button", {
       cls: "zss-icon-button",
-      attr: { type: "button", "aria-label": "打开 Inkprint 菜单" },
+      attr: { type: "button", "aria-label": t("sidebar.menu") },
     });
     setIcon(menuButton, "panel-left-open");
     menuButton.addEventListener("click", () => this.setDrawerOpen(true));
 
     const title = header.createDiv({ cls: "zss-mobile-header-title" });
     title.createEl("strong", { text: "Inkprint" });
-    title.createSpan({ text: "AI writes its own. I write mine." });
+    title.createSpan({ text: t("brand.tagline") });
+    const todayButton = header.createEl("button", {
+      cls: "zss-icon-button",
+      attr: { type: "button", "aria-label": t("sidebar.today") },
+    });
+    setIcon(todayButton, "plus");
+    todayButton.addEventListener("click", () => this.focusTodayComposer());
 
     const body = root.createDiv({ cls: "zss-body" });
     const sidebar = body.createEl("aside", { cls: "zss-sidebar" });
-    this.renderBrand(sidebar);
+    this.renderBrand(sidebar, "desktop");
     const stats = sidebar.createDiv({ cls: "zss-sidebar-stats" });
     void this.populateSidebarStats(stats);
     this.renderNavigation(sidebar);
     const tagIndex = sidebar.createDiv({ cls: "zss-sidebar-tags" });
     void this.populateSidebarTags(tagIndex);
+    this.renderTrashButton(sidebar);
     const pageHost = body.createEl("main", { cls: "zss-page-host" });
+    this.sidebarExpandButton = root.createEl("button", {
+      cls: "zss-sidebar-expand",
+      attr: { type: "button", "aria-label": t("sidebar.expand") },
+    });
+    setIcon(this.sidebarExpandButton, "panel-left-open");
+    this.sidebarExpandButton.addEventListener("click", () => this.setSidebarCollapsed(false));
 
     for (const page of PAGES) {
       const section = pageHost.createEl("section", {
@@ -105,34 +121,11 @@ export class AppShell {
     this.drawerBackdrop.addEventListener("click", () => this.setDrawerOpen(false));
     this.drawer = root.createEl("aside", {
       cls: "zss-mobile-drawer",
-      attr: { "aria-hidden": "true", "aria-label": "Inkprint 菜单" },
+      attr: { "aria-hidden": "true", "aria-label": t("sidebar.menu") },
     });
-    this.renderBrand(this.drawer);
+    this.renderBrand(this.drawer, "drawer");
     this.renderNavigation(this.drawer);
-
-    const bottom = root.createEl("nav", {
-      cls: "zss-bottom-bar",
-      attr: { "aria-label": "快捷入口" },
-    });
-    for (const page of PAGES.slice(0, 3)) {
-      const button = bottom.createEl("button", {
-        cls: "zss-bottom-action",
-        attr: { type: "button", "aria-label": page.label },
-      });
-      const icon = button.createSpan();
-      setIcon(icon, page.icon);
-      button.createSpan({ text: page.label });
-      button.addEventListener("click", () => {
-        this.setPage(page.id);
-        this.setDrawerOpen(false);
-      });
-    }
-    const todayButton = bottom.createEl("button", {
-      cls: "zss-today-fab",
-      attr: { type: "button", "aria-label": "回到今天并开始记录" },
-    });
-    setIcon(todayButton, "plus");
-    todayButton.addEventListener("click", () => this.focusTodayComposer());
+    this.renderTrashButton(this.drawer);
 
     this.unsubscribe = this.state.subscribe((page) => void this.showPage(page));
     void this.showPage(this.state.getPage());
@@ -151,13 +144,30 @@ export class AppShell {
     this.todayHandler?.();
     this.setPage("journal");
     this.setDrawerOpen(false);
+    this.focusComposerWhenReady();
+  }
+
+  private focusComposerWhenReady(attempt = 0): void {
     window.setTimeout(() => {
-      const input = this.root?.querySelector<HTMLTextAreaElement>(
-        "[data-zss-today-composer] textarea",
+      const input = this.root?.querySelector<HTMLElement>(
+        "[data-zss-today-composer] .cm-content",
       );
-      input?.scrollIntoView({ block: "center", behavior: "smooth" });
-      input?.focus();
-    }, 0);
+      if (!input) {
+        if (attempt < 8) this.focusComposerWhenReady(attempt + 1);
+        return;
+      }
+
+      const composer = input.closest<HTMLElement>(".zss-composer");
+      const page = input.closest<HTMLElement>(".zss-page");
+      if (composer && page) {
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        page.scrollTo({
+          top: Math.max(0, composer.offsetTop - 12),
+          behavior: reduced ? "auto" : "smooth",
+        });
+      }
+      input.focus({ preventScroll: true });
+    }, attempt === 0 ? 0 : 40);
   }
 
   openDate(dateKey: string): void {
@@ -167,6 +177,7 @@ export class AppShell {
 
   openTag(tag: string): void {
     this.setPage("tags");
+    this.activateSidebarTag(tag);
     this.tagHandler?.(tag);
   }
 
@@ -183,6 +194,7 @@ export class AppShell {
     this.todayHandler = null;
     this.dateHandler = null;
     this.tagHandler = null;
+    this.sidebarExpandButton = null;
   }
 
   setTodayHandler(handler: () => void): void {
@@ -197,9 +209,9 @@ export class AppShell {
     this.tagHandler = handler;
   }
 
-  invalidatePage(page: AppPage): void {
+  async invalidatePage(page: AppPage): Promise<void> {
     this.rendered.delete(page);
-    if (this.state.getPage() === page) void this.showPage(page);
+    if (this.state.getPage() === page) await this.showPage(page);
   }
 
   private async showPage(page: AppPage): Promise<void> {
@@ -212,12 +224,13 @@ export class AppShell {
       if (active) button.setAttribute("aria-current", "page");
       else button.removeAttribute("aria-current");
     });
+    if (page !== "tags") this.activateSidebarTag(null);
 
     if (this.rendered.has(page)) return;
     const container = this.pageContainers.get(page);
     const renderer = this.pageRenderers.get(page);
     if (!container || !renderer) {
-      if (container) container.createDiv({ cls: "zss-empty", text: "正在整理这一页……" });
+      if (container) container.createDiv({ cls: "zss-empty", text: t("sidebar.loadingPage") });
       return;
     }
     container.empty();
@@ -227,15 +240,40 @@ export class AppShell {
     } catch (error) {
       container.createDiv({
         cls: "zss-error",
-        text: error instanceof Error ? error.message : "页面加载失败。",
+        text: error instanceof Error ? error.message : t("sidebar.pageError"),
       });
     }
   }
 
-  private renderBrand(container: HTMLElement): void {
-    const brand = container.createDiv({ cls: "zss-brand" });
+  private renderBrand(container: HTMLElement, mode: "desktop" | "drawer"): void {
+    const row = container.createDiv({ cls: "zss-brand-header" });
+    const brand = row.createDiv({ cls: "zss-brand" });
     brand.createEl("strong", { text: "Inkprint" });
-    brand.createSpan({ text: "AI writes its own. I write mine." });
+    brand.createSpan({ text: t("brand.tagline") });
+    const actions = row.createDiv({ cls: "zss-brand-actions" });
+    const refresh = actions.createEl("button", {
+      cls: "zss-icon-button",
+      attr: {
+        type: "button",
+        title: t("sidebar.refresh"),
+        "aria-label": t("sidebar.refresh"),
+      },
+    });
+    setIcon(refresh, "refresh-cw");
+    refresh.addEventListener("click", () => void this.refreshCurrentPage(refresh));
+    const close = actions.createEl("button", {
+      cls: "zss-icon-button",
+      attr: {
+        type: "button",
+        title: mode === "drawer" ? t("common.close") : t("sidebar.collapse"),
+        "aria-label": mode === "drawer" ? t("common.close") : t("sidebar.collapse"),
+      },
+    });
+    setIcon(close, mode === "drawer" ? "x" : "panel-left-close");
+    close.addEventListener("click", () => {
+      if (mode === "drawer") this.setDrawerOpen(false);
+      else this.setSidebarCollapsed(true);
+    });
   }
 
   private async populateSidebarStats(container: HTMLElement): Promise<void> {
@@ -245,9 +283,9 @@ export class AppShell {
       item.createSpan({ text: label });
       return value;
     };
-    const noteValue = stat("笔记");
-    const dayValue = stat("记录天数");
-    const tagValue = stat("标签");
+    const noteValue = stat(t("sidebar.notes"));
+    const dayValue = stat(t("sidebar.days"));
+    const tagValue = stat(t("sidebar.tags"));
 
     const folder = normalizePath(this.options.settings.dailyFolder);
     const files = this.options.vault
@@ -257,7 +295,10 @@ export class AppShell {
     let noteCount = 0;
 
     for (const file of files) {
-      const entries = parseDailyEntries(await this.options.vault.cachedRead(file));
+      const entries = parseDailyEntries(await this.options.vault.cachedRead(file), {
+        dateKey: file.basename,
+        includeLegacy: this.options.settings.recognizeLegacyEntries,
+      });
       noteCount += entries.length;
       entries.forEach((entry) => entry.tags.forEach((tag) => tags.add(tag)));
     }
@@ -279,23 +320,39 @@ export class AppShell {
       .map(([name, count]) => ({ name, count }))
       .sort((first, second) => second.count - first.count)
       .slice(0, 7);
-    if (!tags.length) return;
-    container.createDiv({ cls: "zss-sidebar-section-label", text: "常用标签" });
+    if (!tags.length) {
+      container.createDiv({ cls: "zss-sidebar-empty", text: t("sidebar.tagsEmpty") });
+      return;
+    }
+    container.createDiv({ cls: "zss-sidebar-section-label", text: t("sidebar.popularTags") });
     tags.forEach((tag) => {
       const button = container.createEl("button", {
         cls: "zss-sidebar-tag",
-        attr: { type: "button" },
+        attr: {
+          type: "button",
+          "data-zss-tag": tag.name,
+          "aria-label": t("sidebar.tagAria", { name: tag.name, count: tag.count }),
+          "aria-pressed": "false",
+        },
       });
-      button.createSpan({ text: `#${tag.name}` });
-      button.createSpan({ text: String(tag.count) });
+      button.createSpan({ cls: "zss-sidebar-tag-name", text: `#${tag.name}` });
+      button.createSpan({ cls: "zss-sidebar-tag-count", text: String(tag.count) });
       button.addEventListener("click", () => this.openTag(tag.name));
+    });
+  }
+
+  private activateSidebarTag(tag: string | null): void {
+    this.root?.querySelectorAll<HTMLElement>("[data-zss-tag]").forEach((button) => {
+      const active = tag !== null && button.dataset.zssTag === tag;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
     });
   }
 
   private renderNavigation(container: HTMLElement): void {
     const nav = container.createEl("nav", {
       cls: "zss-nav",
-      attr: { "aria-label": "主导航" },
+      attr: { "aria-label": t("sidebar.mainNav") },
     });
     for (const page of PAGES) {
       const button = nav.createEl("button", {
@@ -304,12 +361,48 @@ export class AppShell {
       });
       const icon = button.createSpan();
       setIcon(icon, page.icon);
-      button.createSpan({ text: page.label });
+      button.createSpan({ text: t(page.labelKey) });
       button.addEventListener("click", () => {
         this.setPage(page.id);
         this.setDrawerOpen(false);
       });
     }
+  }
+
+  private renderTrashButton(container: HTMLElement): void {
+    const footer = container.createDiv({ cls: "zss-sidebar-bottom" });
+    const button = footer.createEl("button", {
+      cls: "zss-trash-button",
+      attr: { type: "button", "aria-label": t("trash.open") },
+    });
+    const icon = button.createSpan();
+    setIcon(icon, "trash-2");
+    const copy = button.createSpan({ cls: "zss-trash-copy" });
+    copy.createSpan({ text: t("sidebar.trash") });
+    copy.createEl("small", { text: t("sidebar.trashManaged") });
+    button.addEventListener("click", () => new TrashModal(this.options.app).open());
+  }
+
+  private async refreshCurrentPage(button: HTMLButtonElement): Promise<void> {
+    if (button.classList.contains("is-loading")) return;
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+    const minimumFeedback = new Promise<void>((resolve) => window.setTimeout(resolve, 420));
+    try {
+      await Promise.all([this.invalidatePage(this.state.getPage()), minimumFeedback]);
+    } finally {
+      button.classList.remove("is-loading");
+      button.removeAttribute("aria-busy");
+    }
+  }
+
+  private setSidebarCollapsed(collapsed: boolean): void {
+    this.root?.classList.toggle("is-sidebar-collapsed", collapsed);
+    this.sidebarExpandButton?.setAttribute("aria-expanded", String(!collapsed));
+    window.setTimeout(() => {
+      if (collapsed) this.sidebarExpandButton?.focus();
+      else this.root?.querySelector<HTMLButtonElement>("[data-zss-nav].is-active")?.focus();
+    }, 190);
   }
 
   private setDrawerOpen(open: boolean): void {

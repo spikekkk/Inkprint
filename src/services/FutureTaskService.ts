@@ -12,7 +12,7 @@ export interface FutureTaskItem {
 export class FutureTaskService {
   constructor(
     private readonly vault: Vault,
-    private readonly config: { dailyFolder: string },
+    private readonly config: { dailyFolder: string; recognizeLegacyEntries?: boolean },
   ) {}
 
   async listForDate(targetDate: string): Promise<FutureTaskItem[]> {
@@ -23,7 +23,10 @@ export class FutureTaskService {
     const items: FutureTaskItem[] = [];
 
     for (const file of files) {
-      const entries = parseDailyEntries(await this.vault.cachedRead(file));
+      const entries = parseDailyEntries(await this.vault.cachedRead(file), {
+        dateKey: file.basename,
+        includeLegacy: this.config.recognizeLegacyEntries,
+      });
       for (const entry of entries) {
         if (!extractFutureTaskDates(entry.body).includes(targetDate)) continue;
         items.push({
