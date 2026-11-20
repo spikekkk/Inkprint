@@ -1153,6 +1153,7 @@ button.zss-composer-tag {
 }
 
 .zss-composer-tools {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1166,6 +1167,7 @@ button.zss-composer-tag {
 }
 
 .zss-composer-actions {
+  min-width: 0;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -1235,7 +1237,9 @@ button.zss-tool-button {
 }
 
 .zss-send-button {
-  min-width: 88px;
+  min-width: 0;
+  width: max-content;
+  max-width: max-content;
   min-height: var(--zss-composer-control-height);
   display: inline-flex;
   align-items: center;
@@ -3251,7 +3255,9 @@ button.zss-relation-picker-item:focus-visible {
   }
 
   .zss-send-button {
-    min-width: 112px;
+    min-width: 0;
+    width: max-content;
+    max-width: max-content;
     min-height: 44px;
     height: 44px;
     padding-inline: 12px;
